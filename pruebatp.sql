@@ -1,0 +1,4 @@
+drop database if exists garcia_montoro_moralez_rodriguez_db1;
+create database garcia_montoro_moralez_rodriguez_db1;
+
+\c garcia_montoro_moralez_rodriguez_db1
