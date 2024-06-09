@@ -65,3 +65,38 @@ CREATE TABLE historia_academica(
 	FOREIGN KEY (id_materia) REFERENCES materia (id_materia),
 	FOREIGN KEY (id_comision) REFERENCES comision (id_comision)
 );
+CREATE TABLE error(
+	id_error INTEGER,
+	operacion CHAR(15)
+	semestre TEXT,
+	id_alumne INTEGER,
+	id_materia INTEGER,
+	id_comision INTEGER,
+	f_error TIMESTAMP,
+	motivo VARCHAR(64),
+	PRIMARY KEY (id_error),
+	FOREIGN KEY (id_alumne) REFERENCES alumne (id_alumne),
+	FOREIGN KEY (semestre) REFERENCES periodo (semestre),
+	FOREIGN KEY (id_materia) REFERENCES materia (id_materia),
+	FOREIGN KEY (id_comision) REFERENCES comision (id_comision)
+);
+CREATE TABLE envio_email(
+	id_email INTEGER,
+	f_generacion TIMESTAMP,
+	email_alumne TEXT,
+	asunto TEXT,
+	cuerpo TEXT,
+	f_envio TIMESTAMP,
+	estado CHAR(10),
+	PRIMARY KEY (id_email)
+);
+CREATE TABLE entrada_trx(
+	id_orden INTEGER,
+	operacion CHAR(15)
+	año INTEGER,
+	nro_semestre INTEGER,
+	id_alumne INTEGER,
+	id_comision INTEGER,
+	FOREIGN KEY (id_alumne) REFERENCES alumne (id_alumne),
+	FOREIGN KEY (id_comision) REFERENCES comision (id_comision)
+)
