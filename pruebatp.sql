@@ -1,4 +1,5 @@
-DROP DATABASE IF EXISTS garcia_montoro_moralez_rodriguez_db1;
+-- Escriban en minúsculas, plz.
+-- DROP DATABASE IF EXISTS garcia_montoro_moralez_rodriguez_db1;
 CREATE DATABASE garcia_montoro_moralez_rodriguez_db1;
 
 \C garcia_montoro_moralez_rodriguez_db1
@@ -21,17 +22,18 @@ CREATE TABLE materia(
 CREATE TABLE correlatividad(
 		id_materia INTEGER,
 		id_mat_correlativa INTEGER,
-		PRIMARY KEY (id_materia, id_mat_correlativa),
-		FOREIGN KEY (id_materia) REFERENCES materia (id_materia),
-		FOREIGN KEY (id_mat_correlativa) REFERENCES materia (id_materia)
+		-
+		--PRIMARY KEY (id_materia, id_mat_correlativa), lean lo que pide el enunciado, plz
+		--FOREIGN KEY (id_materia) REFERENCES materia (id_materia),
+		--FOREIGN KEY (id_mat_correlativa) REFERENCES materia (id_materia)
 );
 
 CREATE TABLE comision(
 		id_materia INTEGER,
 		id_comision INTEGER,
 		cupo INTEGER,
-		PRIMARY KEY (id_materia, id_comision),
-		FOREIGN KEY (id_materia) REFERENCES materia (id_materia)
+		-- PRIMARY KEY (id_materia, id_comision),
+		-- FOREIGN KEY (id_materia) REFERENCES materia (id_materia)
 );
 
 CREATE TABLE cursada (
@@ -41,9 +43,6 @@ CREATE TABLE cursada (
 	f_inscripcion TIMESTAMP,
 	nota INTEGER,
 	estado CHAR(12),
-	PRIMARY KEY (id_materia, id_alumno),
-	FOREIGN KEY (id_materia) REFERENCES materia (id_materia),
-	FOREIGN KEY (id_alumne) REFERENCES alumne (id_alumne)
 );
 
 CREATE TABLE periodo(
