@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"encoding/json"
+	"os"
 )
 
 type Alumne struct {
@@ -75,25 +76,29 @@ type Envio_mail struct {
 }
 
 func main() {
-	opcion := pedirOpcion()
-	elegirOpcion(opcion)
+	ejecutarPrograma()
 }
 
-func pedirOpcion() int {
-	var opcion int
-	fmt.Printf ("¡Bienvenido! Elige una opciòn para continuar:\n")
+func mostrarOpciones() int {
+	fmt.Printf ("Elige una opcion para continuar:\n")
 	fmt.Printf ("Para crear la DB, escriba el nùmero 1\n")
 	fmt.Printf ("Para crear las tablas de l DB, escriba el nùmero 2\n")
 	fmt.Printf ("Para cargar los datos de los archivos JSON, escriba el nùmero 3\n")
 	fmt.Printf ("Para sarasa4, escriba el nùmero 4\n")
 	fmt.Printf ("Para sarasa5, escriba el nùmero 5\n")
 	fmt.Printf ("Para salir, escriba el nùmero 6\n")
+	
+	var opcion int
 	fmt.Scanf("%d",&opcion)
 	return opcion
 }
 
-func elegirOpcion(opcion int) {
-	switch opcion {
+func ejecutarPrograma() {
+	fmt.Printf ("¡Bienvenido!\n")
+	
+	for {	
+		opcion := mostrarOpciones()
+		switch opcion {
 		case 1:
 			createDatabase()
 			
@@ -112,8 +117,23 @@ func elegirOpcion(opcion int) {
 			//funcion1()
 			
 		case 6:
-			fmt.Printf("¡Hasta la pròxima!\n")
-	}		
+			fmt.Printf("¡Hasta la proxima!\n")
+			os.Exit(0)
+		default:
+			fmt.Printf("Opcion no valida\n")
+		}
+		
+		if !preguntarContinuar() {
+			break
+		}
+	}
+}
+
+func preguntarContinuar() bool {
+	var continuar string
+	fmt.Printf("¿Desea realizar otra accion? (s/n):\n")
+	fmt.Scanf("%s",&continuar)
+	return continuar == "s"
 }
 
 func createDatabase() {
@@ -197,6 +217,8 @@ func createDbTables() {
 	if err != nil {
 		log.Fatal(err)
 	}
+	
+	fmt.Printf("Tablas cargadas.\n")
 }	
 
 func levantarJSons() {
