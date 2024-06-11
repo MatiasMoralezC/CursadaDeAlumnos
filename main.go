@@ -82,11 +82,11 @@ func main() {
 func pedirOpcion() int {
 	var opcion int
 	fmt.Printf ("¡Bienvenido! Elige una opciòn para continuar:\n")
-	fmt.Printf ("Para crear la base de datos, escriba el nùmero 1\n")
-	fmt.Printf ("Para cargar los datos de los archivos JSON, escriba el nùmero 2\n")
-	fmt.Printf ("Para sarasa3, escriba el nùmero 3\n")
+	fmt.Printf ("Para crear la DB, escriba el nùmero 1\n")
+	fmt.Printf ("Para crear las tablas de l DB, escriba el nùmero 2\n")
+	fmt.Printf ("Para cargar los datos de los archivos JSON, escriba el nùmero 3\n")
 	fmt.Printf ("Para sarasa4, escriba el nùmero 4\n")
-	fmt.Printf ("Para sarasa4, escriba el nùmero 5\n")
+	fmt.Printf ("Para sarasa5, escriba el nùmero 5\n")
 	fmt.Printf ("Para salir, escriba el nùmero 6\n")
 	fmt.Scanf("%d",&opcion)
 	return opcion
@@ -98,11 +98,10 @@ func elegirOpcion(opcion int) {
 			createDatabase()
 			
 		case 2:
-			levantarJSons()
+			createDbTables()
 			
 		case 3:
-			fmt.Printf("falta agregar funcion\n")
-			//funcion()
+			levantarJSons()
 			
 		case 4:
 			fmt.Printf("falta agregar funcion\n")
@@ -139,6 +138,10 @@ func createDatabase() {
 		log.Fatal(err)
 	}
 	
+	fmt.Printf("Base de datos creada.\n")
+}
+
+func createDbTables() {
 	dbPrueba,err := sql.Open("postgres", "user=postgres host=localhost dbname=prueba sslmode=disable")
 	if err!= nil {
 		log.Fatal(err)
@@ -149,9 +152,52 @@ func createDatabase() {
 	if err != nil {
 		log.Fatal(err)
 	}
+		
+	_, err = dbPrueba.Exec(`create table materia(id_materia int, nombre char(64))`)
+	if err != nil {
+		log.Fatal(err)
+	}
 	
-	fmt.Printf("Base de datos creada.\n")
-}
+	_, err = dbPrueba.Exec(`create table correlatividad(id_materia int, nombre char(64))`)
+	if err != nil {
+		log.Fatal(err)
+	}
+	
+	_, err = dbPrueba.Exec(`create table comision(id_materia int, id_comision int, cupo int)`)
+	if err != nil {
+		log.Fatal(err)
+	}
+	
+	_, err = dbPrueba.Exec(`create table cursada(id_materia int, id_alumne int, id_comision int, f_inscripcion timestamp, nota int, estado char(12))`)
+	if err != nil {
+		log.Fatal(err)
+	}
+	
+	_, err = dbPrueba.Exec(`create table periodo(semestre int, estado char(12))`)
+	if err != nil {
+		log.Fatal(err)
+	}
+	
+	_, err = dbPrueba.Exec(`create table historia_academica(ad_alumne int, semestre text, id_materia int, id_comision int, estado char(15), nota_regular int, nota_final int)`)
+	if err != nil {
+		log.Fatal(err)
+	}
+	
+	_, err = dbPrueba.Exec(`create table error(id_error int, operacion char(15), semestre text, id_alumne int, id_materia int, id_comision int, f_error timestamp, motivo char(64))`)
+	if err != nil {
+		log.Fatal(err)
+	}
+	
+	_, err = dbPrueba.Exec(`create table envio_mail(id_email int, f_generacion timestamp, email_alumne text, asunto text, cuerpo text, f_envio timestamp, estado char(10))`)
+	if err != nil {
+		log.Fatal(err)
+	}
+	
+	_, err = dbPrueba.Exec(`create table entrada_trx(id_orden int, operacion char(15), año int, nro_semestre int, id_alumne int, id_comision int)`)
+	if err != nil {
+		log.Fatal(err)
+	}
+}	
 
 func levantarJSons() {
 	dataAlumnes, err := ioutil.ReadFile("alumnes.json")
