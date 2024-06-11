@@ -75,8 +75,46 @@ type Envio_mail struct {
 }
 
 func main() {
-	createDatabase()
-	levantarJSons()
+	opcion := pedirOpcion()
+	elegirOpcion(opcion)
+}
+
+func pedirOpcion() int {
+	var opcion int
+	fmt.Printf ("¡Bienvenido! Elige una opciòn para continuar:\n")
+	fmt.Printf ("Para crear la base de datos, escriba el nùmero 1\n")
+	fmt.Printf ("Para cargar los datos de los archivos JSON, escriba el nùmero 2\n")
+	fmt.Printf ("Para sarasa3, escriba el nùmero 3\n")
+	fmt.Printf ("Para sarasa4, escriba el nùmero 4\n")
+	fmt.Printf ("Para sarasa4, escriba el nùmero 5\n")
+	fmt.Printf ("Para salir, escriba el nùmero 6\n")
+	fmt.Scanf("%d",&opcion)
+	return opcion
+}
+
+func elegirOpcion(opcion int) {
+	switch opcion {
+		case 1:
+			createDatabase()
+			
+		case 2:
+			levantarJSons()
+			
+		case 3:
+			fmt.Printf("falta agregar funcion\n")
+			//funcion()
+			
+		case 4:
+			fmt.Printf("falta agregar funcion\n")
+			//funcion1()
+			
+		case 5:
+			fmt.Printf("falta agregar funcion\n")
+			//funcion1()
+			
+		case 6:
+			fmt.Printf("¡Hasta la pròxima!\n")
+	}		
 }
 
 func createDatabase() {
@@ -142,3 +180,10 @@ func levantarJSons() {
 	
 	fmt.Printf("Tabla de alumnes cargada.\n")
 }
+
+
+
+
+
+
+
