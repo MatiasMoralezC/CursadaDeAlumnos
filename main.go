@@ -234,6 +234,65 @@ func createDbTables() {
 	fmt.Printf("Tablas cargadas.\n")
 }	
 
+func tablaExiste(tableName string) bool {
+dbPrueba,err := sql.Open("postgres", "user=postgres host=localhost dbname=prueba sslmode=disable")
+if err!= nil {
+log.Fatal(err)
+}
+    var exists bool
+    query := `SELECT EXISTS (
+        SELECT FROM information_schema.tables
+        WHERE table_schema = 'public' AND table_name = $1
+    )`
+    err := db.QueryRow(query, tableName).Scan(&exists)
+    if err != nil {
+        log.Fatal(err)
+    }
+    return exists
+}
+
+func ingresarPrimaryKey (){
+dbPrueba,err := sql.Open("postgres", "user=postgres host=localhost dbname=prueba sslmode=disable")
+if err!= nil {
+log.Fatal(err)
+}
+defer dbPrueba.Close()
+
+fmt.Printf("Ingrese el nombre de la tabla: ")
+    var tableName string
+    _, err = fmt.Scanln(&tableName)
+    if err != nil {
+        log.Fatal(err)
+    }
+    if !tablaExiste(tableName) {
+        fmt.Printf("La tabla '%s' no existe en la base de datos.\n", tableName)
+        return
+    }
+ 
+   
+fmt.Printf("ingrese las primary keys:")
+var primaryKeys string
+_, err := fmt.Scanf(&primaryKeys)
+if err != nil {
+log.Fatal(err)
+}
+keys := strings.Split(primaryKeys, ",")
+
+for _, key := range keys {
+        key = strings.TrimSpace(key)
+        var exists bool
+        query := fmt.Sprintf("SELECT EXISTS(SELECT 1 FROM %s WHERE id = $1)", tableName)
+        if err != nil {
+            log.Fatal(err)
+        }
+        if exists {
+            fmt.Printf("La clave primaria '%s' existe en la tabla.\n", key)
+        } else {
+            fmt.Printf("La clave primaria '%s' NO existe en la tabla.\n", key)
+        }
+    }
+}
+
 func levantarJSons() {
 	db,err := sql.Open("postgres", "user=postgres host=localhost dbname=prueba sslmode=disable")
 	if err!= nil{
