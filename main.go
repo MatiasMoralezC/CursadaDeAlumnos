@@ -8,16 +8,17 @@ import (
 	"io/ioutil"
 	"encoding/json"
 	"os"
+	"os/exec"
 )
 
 type Alumne struct {
-	Id_alumne	int	`json:id_alumne`
-	Nombre		string	`json:nombre`
-	Apellido	string	`json:apellido`
-	Dni			int	`json:id_alumne`
-	Fecha_nacimiento	string	`json:fecha_nacimiento`
-	Telefono	string	`json:telefono`
-	Email		string	`json:email`
+	Id_alumne	int
+	Nombre		string
+	Apellido	string
+	Dni			int
+	Fecha_nacimiento	string
+	Telefono	string
+	Email		string
 }
 
 type Materia struct {
@@ -25,9 +26,15 @@ type Materia struct {
 	Nombre	string
 }
 
+type Comision struct {
+	Id_materia 	int
+	Id_comision int
+	Cupo 		int
+	}
+
 type Correlatividad struct {
 	Id_materia	int
-	Id_mat_correlatva	int
+	Id_mat_correlativa	int
 }
 
 type Cursada struct {
@@ -97,7 +104,12 @@ func ejecutarPrograma() {
 	fmt.Printf ("¡Bienvenido!\n")
 	
 	for {	
+		clear()
+		
 		opcion := mostrarOpciones()
+		
+		clear()
+		
 		switch opcion {
 		case 1:
 			createDatabase()
@@ -136,17 +148,18 @@ func preguntarContinuar() bool {
 	return continuar == "s"
 }
 
+func clear() {
+	cmd := exec.Command("clear")
+	cmd.Stdout = os.Stdout
+	cmd.Run()
+	}
+
 func createDatabase() {
 	db,err := sql.Open("postgres", "user=postgres host=localhost dbname=postgres sslmode=disable")
 	if err!= nil {
 		log.Fatal(err)
 	}
 	defer db.Close()
-	
-	_, err = db.Exec(`SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = 'mi_base_de_datos';`)
-	if err != nil {
-		log.Fatal(err)
-	}
 	
 	_, err = db.Exec(`drop database if exists prueba;`)
 	if err != nil {
@@ -162,58 +175,58 @@ func createDatabase() {
 }
 
 func createDbTables() {
-	dbPrueba,err := sql.Open("postgres", "user=postgres host=localhost dbname=prueba sslmode=disable")
+	db,err := sql.Open("postgres", "user=postgres host=localhost dbname=prueba sslmode=disable")
 	if err!= nil {
 		log.Fatal(err)
 	}
-	defer dbPrueba.Close()
+	defer db.Close()
 	
-	_, err = dbPrueba.Exec(`create table alumne(id_alumne int, nombre char(64), apellido char(64), dni int, fecha_nacimiento date, telefono char(64), email char(64))`)
+	_, err = db.Exec(`create table alumne(id_alumne int, nombre char(64), apellido char(64), dni int, fecha_nacimiento date, telefono char(64), email char(64))`)
 	if err != nil {
 		log.Fatal(err)
 	}
 		
-	_, err = dbPrueba.Exec(`create table materia(id_materia int, nombre char(64))`)
+	_, err = db.Exec(`create table materia(id_materia int, nombre char(64))`)
 	if err != nil {
 		log.Fatal(err)
 	}
 	
-	_, err = dbPrueba.Exec(`create table correlatividad(id_materia int, nombre char(64))`)
+	_, err = db.Exec(`create table correlatividad(id_materia char(12), nombre char(64))`)
 	if err != nil {
 		log.Fatal(err)
 	}
 	
-	_, err = dbPrueba.Exec(`create table comision(id_materia int, id_comision int, cupo int)`)
+	_, err = db.Exec(`create table comision(id_materia int, id_comision int, cupo int)`)
 	if err != nil {
 		log.Fatal(err)
 	}
 	
-	_, err = dbPrueba.Exec(`create table cursada(id_materia int, id_alumne int, id_comision int, f_inscripcion timestamp, nota int, estado char(12))`)
+	_, err = db.Exec(`create table cursada(id_materia int, id_alumne int, id_comision int, f_inscripcion timestamp, nota int, estado char(12))`)
 	if err != nil {
 		log.Fatal(err)
 	}
 	
-	_, err = dbPrueba.Exec(`create table periodo(semestre int, estado char(12))`)
+	_, err = db.Exec(`create table periodo(semestre char(12), estado char(12))`)
 	if err != nil {
 		log.Fatal(err)
 	}
 	
-	_, err = dbPrueba.Exec(`create table historia_academica(ad_alumne int, semestre text, id_materia int, id_comision int, estado char(15), nota_regular int, nota_final int)`)
+	_, err = db.Exec(`create table historia_academica(ad_alumne int, semestre text, id_materia int, id_comision int, estado char(15), nota_regular int, nota_final int)`)
 	if err != nil {
 		log.Fatal(err)
 	}
 	
-	_, err = dbPrueba.Exec(`create table error(id_error int, operacion char(15), semestre text, id_alumne int, id_materia int, id_comision int, f_error timestamp, motivo char(64))`)
+	_, err = db.Exec(`create table error(id_error int, operacion char(15), semestre text, id_alumne int, id_materia int, id_comision int, f_error timestamp, motivo char(64))`)
 	if err != nil {
 		log.Fatal(err)
 	}
 	
-	_, err = dbPrueba.Exec(`create table envio_mail(id_email int, f_generacion timestamp, email_alumne text, asunto text, cuerpo text, f_envio timestamp, estado char(10))`)
+	_, err = db.Exec(`create table envio_mail(id_email int, f_generacion timestamp, email_alumne text, asunto text, cuerpo text, f_envio timestamp, estado char(10))`)
 	if err != nil {
 		log.Fatal(err)
 	}
 	
-	_, err = dbPrueba.Exec(`create table entrada_trx(id_orden int, operacion char(15), año int, nro_semestre int, id_alumne int, id_comision int)`)
+	_, err = db.Exec(`create table entrada_trx(id_orden int, operacion char(15), año int, nro_semestre int, id_alumne int, id_comision int)`)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -222,6 +235,12 @@ func createDbTables() {
 }	
 
 func levantarJSons() {
+	db,err := sql.Open("postgres", "user=postgres host=localhost dbname=prueba sslmode=disable")
+	if err!= nil{
+		log.Fatal(err)
+	}
+	defer db.Close()
+	
 	dataAlumnes, err := ioutil.ReadFile("alumnes.json")
 	if err != nil{
 		log.Fatal(err)
@@ -233,12 +252,6 @@ func levantarJSons() {
 		log.Fatal(err)
 	}
 	
-	db,err := sql.Open("postgres", "user=postgres host=localhost dbname=prueba sslmode=disable")
-	if err!= nil{
-		log.Fatal(err)
-	}
-	defer db.Close()
-	
 	for _, alumne := range alumnes {
 		_, err := db.Exec("insert into alumne values ($1, $2, $3, $4, $5, $6, $7)", alumne.Id_alumne, alumne.Nombre, alumne.Apellido, alumne.Dni, alumne.Fecha_nacimiento, alumne.Telefono, alumne.Email)
 		if err != nil{
@@ -247,7 +260,109 @@ func levantarJSons() {
 	}
 	
 	fmt.Printf("Tabla de alumnes cargada.\n")
+	
+	dataMaterias, err := ioutil.ReadFile("materias.json")
+	if err != nil{
+		log.Fatal(err)
+	}
+	
+	var materias []Materia
+	err = json.Unmarshal(dataMaterias, &materias)
+	if err != nil {
+		log.Fatal(err)
+	}
+	
+	for _, materia := range materias {
+		_, err := db.Exec("insert into materia values ($1, $2)", materia.Id_materia, materia.Nombre)
+		if err != nil{
+			log.Fatal(err)
+		}
+	}
+	
+	fmt.Printf("Tabla de materias cargada.\n")
+	
+	dataComisiones, err := ioutil.ReadFile("comisiones.json")
+	if err != nil{
+		log.Fatal(err)
+	}
+	
+	var comisiones []Comision
+	err = json.Unmarshal(dataComisiones, &comisiones)
+	if err != nil {
+		log.Fatal(err)
+	}
+	
+	for _, comision := range comisiones {
+		_, err := db.Exec("insert into comision values ($1, $2, $3)", comision.Id_materia, comision.Id_comision, comision.Cupo)
+		if err != nil{
+			log.Fatal(err)
+		}
+	}
+	
+	fmt.Printf("Tabla de comisiones cargada.\n")
+	
+	dataPeriodos, err := ioutil.ReadFile("periodos.json")
+	if err != nil{
+		log.Fatal(err)
+	}
+	
+	var periodos []Periodo
+	err = json.Unmarshal(dataPeriodos, &periodos)
+	if err != nil {
+		log.Fatal(err)
+	}
+	
+	for _, periodo := range periodos {
+		_, err := db.Exec("insert into periodo values ($1, $2)", periodo.Semestre, periodo.Estado)
+		if err != nil{
+			log.Fatal(err)
+		}
+	}
+	
+	fmt.Printf("Tabla de periodos cargada.\n")
+	
+	dataCorrelativas, err := ioutil.ReadFile("correlatividades.json")
+	if err != nil{
+		log.Fatal(err)
+	}
+	
+	var correlatividades []Correlatividad
+	err = json.Unmarshal(dataCorrelativas, &correlatividades)
+	if err != nil {
+		log.Fatal(err)
+	}
+	
+	for _, correlativa := range correlatividades {
+		_, err := db.Exec("insert into correlatividad values ($1, $2)", correlativa.Id_materia, correlativa.Id_mat_correlativa)
+		if err != nil{
+			log.Fatal(err)
+		}
+	}
+	
+	fmt.Printf("Tabla de correlatividades cargada.\n")
+	
+	dataHistorias, err := ioutil.ReadFile("historia_academica.json")
+	if err != nil{
+		log.Fatal(err)
+	}
+	
+	var historias_academicas []Historia_academica
+	err = json.Unmarshal(dataHistorias, &historias_academicas)
+	if err != nil {
+		log.Fatal(err)
+	}
+	
+	for _, historia_academica := range historias_academicas {
+		_, err := db.Exec("insert into historia_academica values ($1, $2, $3, $4, $5, $6, $7)", historia_academica.Id_alumne, historia_academica.Semestre, historia_academica.Id_materia,
+							historia_academica.Id_comision, historia_academica.Estado, historia_academica.Nota_regular, historia_academica.Nota_final)
+		if err != nil{
+			log.Fatal(err)
+		}
+	}
+	
+	fmt.Printf("Tabla de historias acadèmicas cargada.\n")
 }
+
 
 
 

@@ -29,7 +29,7 @@
     "id_alumne": 1,
     "semestre": "2023-2",
     "id_materia": 3,
-    "id_comision": 2,
+    "id_comision": 1,
     "estado": "regular",
     "nota_regular": 5
   },
@@ -72,7 +72,7 @@
     "id_alumne": 2,
     "semestre": "2023-2",
     "id_materia": 3,
-    "id_comision": 2,
+    "id_comision": 1,
     "estado": "reprobada",
     "nota_regular": 2
   },
