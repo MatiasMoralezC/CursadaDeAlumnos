@@ -89,7 +89,7 @@ func main() {
 func mostrarOpciones() int {
 	fmt.Printf ("Elige una opcion para continuar:\n")
 	fmt.Printf ("Para crear la DB, escriba el nùmero 1\n")
-	fmt.Printf ("Para crear las tablas de l DB, escriba el nùmero 2\n")
+	fmt.Printf ("Para crear las tablas de la DB, escriba el nùmero 2\n")
 	fmt.Printf ("Para cargar los datos de los archivos JSON, escriba el nùmero 3\n")
 	fmt.Printf ("Para sarasa4, escriba el nùmero 4\n")
 	fmt.Printf ("Para sarasa5, escriba el nùmero 5\n")
@@ -121,12 +121,10 @@ func ejecutarPrograma() {
 			levantarJSons()
 			
 		case 4:
-			fmt.Printf("falta agregar funcion\n")
-			//funcion1()
+			ingresarPrimaryKey()
 			
 		case 5:
-			fmt.Printf("falta agregar funcion\n")
-			//funcion1()
+			ingresarForeignKey()
 			
 		case 6:
 			fmt.Printf("¡Hasta la proxima!\n")
@@ -291,6 +289,70 @@ for _, key := range keys {
             fmt.Printf("La clave primaria '%s' NO existe en la tabla.\n", key)
         }
     }
+}
+
+func ingresarForeignKey() {
+	dbPrueba,err := sql.Open("postgres", "user=postgres host=localhost dbname=prueba sslmode=disable")
+	if err!= nil {
+	log.Fatal(err)
+	}
+	defer dbPrueba.Close()
+		
+	var tableName string
+	fmt.Printf("Ingrese el nombre de la tabla: ")
+	_, err = fmt.Scanln(tableName)
+	if err != nil {
+		log.Fatal(err)
+	}
+	
+	if !tablaExiste(tableName) {
+		fmt.Printf("La tabla '%s' no existe en la base de datos.\n", tableName)
+		return
+	}
+	
+	var foreignKey string
+	fmt.Printf("Ingrese el nombre de la foreign key: ")
+	_, err = fmt.Scanln(foreignKey)
+	if err != nil {
+		fmt.Printf("Error al leer la foreign key a ingresar. ", err)
+		return
+	}
+	
+	var externalTable string
+	fmt.Printf("Ingrese el nombre de la tabla a la que hace referencia: ")
+	_, err = fmt.Scanln(externalTable)
+	if err != nil {
+		fmt.Printf("Error al leer la tabla a la que hace referenca. ", err)
+		return
+	}
+	if !tablaExiste(externalTable) {
+		fmt.Printf("La tabla externa ingresada '%s' no existe.\n", externalTable)
+		return
+	}
+	
+	var externalColumn string
+	fmt.Printf("Ingrese el nombre de la columna externa a la que hace referencia: ")
+	_, err = fmt.Scanln(externalColumn)
+	if err != nil {
+		fmt.Printf("Error al leer la columna externa. ", err)
+		return
+	}
+	
+	sqlStatement := fmt.Sprintf('
+		ALTER TABLE %s
+		ADD CONSTRAINT %s_%s_fk
+		FOREIGN KEY (%s)
+		REFERENCES %s(%s);
+	',
+	tableName, tableName, foreignKey, foreignKey, externalTable, externalColumn)
+	
+	_, err = db.Exec(sqlStatement)
+	if err != nil {
+		fmt.Printf("Error al agregar la FK a la tabla. ", err)
+		return
+	}
+	
+	fmt.Printf("Foreign key '%s' agregada exitosamente a la tabla '%s'.\n", foreignKey,tableName)
 }
 
 func levantarJSons() {
