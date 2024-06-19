@@ -91,9 +91,10 @@ func mostrarOpciones() int {
 	fmt.Printf ("Para crear la DB, escriba el nùmero 1\n")
 	fmt.Printf ("Para crear las tablas de la DB, escriba el nùmero 2\n")
 	fmt.Printf ("Para cargar los datos de los archivos JSON, escriba el nùmero 3\n")
-	fmt.Printf ("Para sarasa4, escriba el nùmero 4\n")
-	fmt.Printf ("Para sarasa5, escriba el nùmero 5\n")
-	fmt.Printf ("Para salir, escriba el nùmero 6\n")
+	fmt.Printf ("Para agregar las primary keys, escriba el nùmero 4\n")
+	fmt.Printf ("Para agregar las foreign keys, escriba el nùmero 5\n")
+	fmt.Printf ("Para realizar la inscripciòn a una materia, escriba el nùmero 6\n")
+	fmt.Printf ("Para salir, escriba el nùmero 7\n")
 	
 	var opcion int
 	fmt.Scanf("%d",&opcion)
@@ -121,12 +122,15 @@ func ejecutarPrograma() {
 			levantarJSons()
 			
 		case 4:
-			ingresarPrimaryKey()
+			createDbTables()
 			
 		case 5:
-			ingresarForeignKey()
+			createDbTables()
 			
 		case 6:
+			inscripcionMateria()
+			
+		case 7:
 			fmt.Printf("¡Hasta la proxima!\n")
 			os.Exit(0)
 		default:
@@ -159,12 +163,12 @@ func createDatabase() {
 	}
 	defer db.Close()
 	
-	_, err = db.Exec(`drop database if exists prueba;`)
+	_, err = db.Exec(`drop database if exists garcia_montoro_moralez_rodriguez_db1;`)
 	if err != nil {
 		log.Fatal(err)
 	}
 	
-	_, err = db.Exec(`create database prueba;`)
+	_, err = db.Exec(`create database garcia_montoro_moralez_rodriguez_db1;`)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -173,7 +177,7 @@ func createDatabase() {
 }
 
 func createDbTables() {
-	db,err := sql.Open("postgres", "user=postgres host=localhost dbname=prueba sslmode=disable")
+	db,err := sql.Open("postgres", "user=postgres host=localhost dbname=garcia_montoro_moralez_rodriguez_db1 sslmode=disable")
 	if err!= nil {
 		log.Fatal(err)
 	}
@@ -232,8 +236,8 @@ func createDbTables() {
 	fmt.Printf("Tablas cargadas.\n")
 }	
 
-func tablaExiste(tableName string) bool {
-dbPrueba,err := sql.Open("postgres", "user=postgres host=localhost dbname=prueba sslmode=disable")
+/*func tablaExiste(tableName string) bool {
+db,err := sql.Open("postgres", "user=postgres host=localhost dbname=garcia_montoro_moralez_rodriguez_db1 sslmode=disable")
 if err!= nil {
 log.Fatal(err)
 }
@@ -249,8 +253,8 @@ log.Fatal(err)
     return exists
 }
 
-func ingresarPrimaryKey (){
-dbPrueba,err := sql.Open("postgres", "user=postgres host=localhost dbname=prueba sslmode=disable")
+func agregarPrimaryKey (){
+dbPrueba,err := sql.Open("postgres", "user=postgres host=localhost dbname=garcia_montoro_moralez_rodriguez_db1 sslmode=disable")
 if err!= nil {
 log.Fatal(err)
 }
@@ -291,8 +295,8 @@ for _, key := range keys {
     }
 }
 
-func ingresarForeignKey() {
-	dbPrueba,err := sql.Open("postgres", "user=postgres host=localhost dbname=prueba sslmode=disable")
+func agregarForeignKey() {
+	dbPrueba,err := sql.Open("postgres", "user=postgres host=localhost dbname=garcia_montoro_moralez_rodriguez_db1 sslmode=disable")
 	if err!= nil {
 	log.Fatal(err)
 	}
@@ -338,12 +342,12 @@ func ingresarForeignKey() {
 		return
 	}
 	
-	sqlStatement := fmt.Sprintf('
+	sqlStatement := fmt.Sprintf(`
 		ALTER TABLE %s
 		ADD CONSTRAINT %s_%s_fk
 		FOREIGN KEY (%s)
 		REFERENCES %s(%s);
-	',
+	`,
 	tableName, tableName, foreignKey, foreignKey, externalTable, externalColumn)
 	
 	_, err = db.Exec(sqlStatement)
@@ -353,10 +357,10 @@ func ingresarForeignKey() {
 	}
 	
 	fmt.Printf("Foreign key '%s' agregada exitosamente a la tabla '%s'.\n", foreignKey,tableName)
-}
+}*/
 
 func levantarJSons() {
-	db,err := sql.Open("postgres", "user=postgres host=localhost dbname=prueba sslmode=disable")
+	db,err := sql.Open("postgres", "user=postgres host=localhost dbname=garcia_montoro_moralez_rodriguez_db1 sslmode=disable")
 	if err!= nil{
 		log.Fatal(err)
 	}
@@ -481,7 +485,51 @@ func levantarJSons() {
 		}
 	}
 	
-	fmt.Printf("Tabla de historias acadèmicas cargada.\n")
+	fmt.Printf("Tabla de historias académicas cargada.\n")
+}
+
+func inscripcionMateria() {
+	var idAlumne string
+	
+	fmt.Printf("Ingrese el id del alumne:\n")
+	fmt.Scanf("%s", &idAlumne)
+	
+	fmt.Printf("Id alumne: %s.\n", idAlumne)
+	
+	var idMateria string
+	
+	fmt.Printf("Ingrese el id de la materia:\n")
+	fmt.Scanf("%s", &idMateria)
+	
+	fmt.Printf("Id materia: %s.\n", idMateria)
+	
+	var idComision string
+	
+	fmt.Printf("Ingrese el id de la comisión:\n")
+	fmt.Scanf("%s", &idComision)
+	
+	fmt.Printf("Id comisión: %s.\n", idComision)
+	
+	db,err := sql.Open("postgres", "user=postgres host=localhost dbname=garcia_montoro_moralez_rodriguez_db1 sslmode=disable")
+	if err!= nil{
+		log.Fatal(err)
+	}
+	defer db.Close()
+	
+	row, err := db.Query(`select 1 from periodo where estado='abierto'`)
+	if err != nil {
+			log.Fatal(err)
+	}
+	defer row.Close()
+	/* Acá se debería buscar si existe un periodo abierto*/
+	
+	/* Una vez que se encuentre se busca si el alumne existe (mismo proceso)*/
+	
+	/* Una vez que se encuentre se busca si la materia existe (mismo proceso)*/
+	
+	/* Una vez que se encuentre se busca si la comision existe (mismo proceso)*/
+	
+	/* Una vez que se encuentre se busca si el alumne ya está en la materia (mismo proceso)*/
 }
 
 
