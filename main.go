@@ -83,7 +83,42 @@ type Envio_mail struct {
 }
 
 func main() {
-	ejecutarPrograma()
+ejecutarPrograma()
+// configurar la conexión a la base de datos
+    connStr := "user=postgres host=localhost dbname=garcia_montoro_moralez_rodriguez_db1 sslmode=disable"
+    db, err := sql.Open("postgres", connStr)
+    if err != nil {
+        log.Fatal(err)
+    }
+    defer db.Close()
+
+    // cargar la función SQL en la base de datos
+    err = loadAperturaInscripcion(db)
+    if err != nil {
+        log.Fatalf("error al cargar la función SQL: %v\n", err)
+    }
+
+    fmt.Println("función SQL cargada exitosamente.")
+
+    // definir las variables de salida
+    var p_result bool
+    var p_error_message string
+    p_semestre := "2024-1" // definir el anio / semestre
+
+    // llamar a la función apertura_inscripcion
+    query := `select * from apertura_inscripcion($1)`
+    err = db.QueryRow(query, p_semestre).Scan(&p_result, &p_error_message)
+    if err != nil {
+        log.Fatal(err)
+    }
+
+    // mostrar el resultado
+    fmt.Printf("result: %v\n", p_result)
+    if p_error_message != "" {
+        fmt.Printf("error: %s\n", p_error_message)
+    } else {
+        fmt.Println("inscripción abierta exitosamente.")
+    }
 }
 
 func mostrarOpciones() int {
@@ -498,6 +533,61 @@ func inscripcionMateria() {
 	if err != nil {
 		log.Fatal(err)
 	}
+}
+
+// CARGA EL SP EN LA DB NO LO EJECUTA, DSPS LO EJECUTAMOS EN EL MAIN
+func loadAperturaInscripcion(db *sql.DB) error {
+    sql := `
+    create or replace function apertura_inscripcion(p_semestre varchar(7), out p_result boolean, out p_error_message text) as $$
+    declare
+        v_estado_actual varchar(7);
+        v_anio_actual int;
+        v_count int;
+        v_semestre char(1);
+    begin
+        p_error_message := '';
+
+        v_anio_actual := substring(p_semestre from 1 for 4)::int;
+        v_semestre := substring(p_semestre from 6 for 1);
+
+        if v_semestre not in ('1', '2') then
+            p_result := false;
+            p_error_message := 'número de semestre no válido';
+            return;
+        end if;
+
+        if v_anio_actual < extract(year from current_date) then
+            p_result := false;
+            p_error_message := 'no se permiten inscripciones para un período anterior';
+            return;
+        end if;
+
+        select estado into v_estado_actual from periodo where semestre = p_semestre;
+
+        if v_estado_actual is not null and v_estado_actual != 'cerrado' then
+            p_result := false;
+            p_error_message := format('no es posible reabrir la inscripción del período, estado actual: %s', v_estado_actual);
+            return;
+        end if;
+
+        select count(*) into v_count from periodo where estado in ('inscripcion', 'cierre inscrip') and semestre != p_semestre;
+
+        if v_count > 0 then
+            p_result := false;
+            p_error_message := 'no es posible abrir otro período de inscripción, ya existe otro período en estado inscripción o cierre inscripción';
+            return;
+        end if;
+
+        insert into periodo (semestre, estado) values (p_semestre, 'abierto')
+        on conflict (semestre) do update set estado = excluded.estado;
+
+        p_result := true;
+    end;
+    $$ language plpgsql;
+    `
+
+    _, err := db.Exec(sql)
+    return err
 }
 
 
