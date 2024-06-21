@@ -241,7 +241,7 @@ fmt.Printf("Tablas cargadas.\n")
 }
 
 func agregarPrimaryKey (){
-db,err := sql.Open("postgres", "user=postgres host=localhost dbname=prueba sslmode=disable")
+db,err := sql.Open("postgres", "user=postgres host=localhost dbname=garcia_montoro_moralez_rodriguez_db1 sslmode=disable")
 if err!= nil {
 log.Fatal(err)
 }
@@ -257,7 +257,7 @@ if err != nil {
 log.Fatal(err)
 }
 
-_, err = db.Exec(`alter table correlatividad add constraint pk_correlatividad primary key (id_materia)`)
+_, err = db.Exec(`alter table correlatividad add constraint pk_correlatividad primary key (id_materia, id_materia_correlativa)`)
 if err != nil {
 log.Fatal(err)
 }
@@ -297,7 +297,7 @@ fmt.Printf("Primary Keys cargadas.\n")
 }
 
 func agregarForeignKey (){
-db,err := sql.Open("postgres", "user=postgres host=localhost dbname=prueba sslmode=disable")
+db,err := sql.Open("postgres", "user=postgres host=localhost dbname=garcia_montoro_moralez_rodriguez_db1 sslmode=disable")
 if err!= nil {
 log.Fatal(err)
 }
@@ -308,7 +308,7 @@ if err != nil {
 log.Fatal(err)
 }
 
-_, err = db.Exec(`alter table correlatividad add constraint fk_materia foreign key (id_mat_correlativa) references materia (id_materia)`)
+_, err = db.Exec(`alter table correlatividad add constraint fk_correlativa foreign key (id_materia_correlativa) references materia (id_materia)`)
 if err != nil {
 log.Fatal(err)
 }
@@ -328,10 +328,10 @@ if err != nil {
 log.Fatal(err)
 }
 
-_, err = db.Exec(`alter table cursada add constraint fk_comision foreign key (id_comision) references materia (id_comision)`)
+/*_, err = db.Exec(`alter table cursada add constraint fk_comision foreign key (id_comision) references materia (id_comision)`)
 if err != nil {
 log.Fatal(err)
-}
+}*/
 
 
 
@@ -350,10 +350,10 @@ if err != nil {
 log.Fatal(err)
 }
 
-_, err = db.Exec(`alter table historia_academica add constraint fk_comision foreign key (id_comision) references materia (id_comision)`)
+/*_, err = db.Exec(`alter table historia_academica add constraint fk_comision foreign key (id_comision) references materia (id_comision)`)
 if err != nil {
 log.Fatal(err)
-}
+}*/
 
 
 
@@ -372,17 +372,17 @@ if err != nil {
 log.Fatal(err)
 }
 
-_, err = db.Exec(`alter table error add constraint fk_comision foreign key (id_comision) references materia (id_comision)`)
+/*_, err = db.Exec(`alter table error add constraint fk_comision foreign key (id_comision) references materia (id_comision)`)
 if err != nil {
 log.Fatal(err)
-}
+}*/
 
 fmt.Printf("Foreign Keys cargadas.\n")
 
 }
 
 func borrarKeys (){
-db,err := sql.Open("postgres", "user=postgres host=localhost dbname=prueba sslmode=disable")
+db,err := sql.Open("postgres", "user=postgres host=localhost dbname=garcia_montoro_moralez_rodriguez_db1 sslmode=disable")
 if err!= nil {
 log.Fatal(err)
 }
@@ -628,7 +628,7 @@ func levantarJSons() {
 }
 
 func inscripcionMateria() {
-	var idAlumne string
+	/*var idAlumne string
 	
 	fmt.Printf("Ingrese el id del alumne:\n")
 	fmt.Scanf("%s", &idAlumne)
@@ -648,27 +648,58 @@ func inscripcionMateria() {
 	fmt.Scanf("%s", &idComision)
 	
 	fmt.Printf("Id comisión: %s.\n", idComision)
-	
+	*/
 	db,err := sql.Open("postgres", "user=postgres host=localhost dbname=garcia_montoro_moralez_rodriguez_db1 sslmode=disable")
 	if err!= nil{
 		log.Fatal(err)
 	}
 	defer db.Close()
 	
-	row, err := db.Query(`select 1 from periodo where estado='abierto'`)
-	if err != nil {
-			log.Fatal(err)
-	}
-	defer row.Close()
-	/* Acá se debería buscar si existe un periodo abierto*/
-	
-	/* Una vez que se encuentre se busca si el alumne existe (mismo proceso)*/
-	
-	/* Una vez que se encuentre se busca si la materia existe (mismo proceso)*/
-	
-	/* Una vez que se encuentre se busca si la comision existe (mismo proceso)*/
-	
-	/* Una vez que se encuentre se busca si el alumne ya está en la materia (mismo proceso)*/
+	_, err := db.Exec(`
+		create function inscripcion_materia(id_alumne_buscado int, id_materia_buscada int, id_comision_buscada int)
+		declare
+			resultado_periodo periodo%rowtype;
+			resultado_alumne alumne%rowtype;
+			resultado_materia materia%rowtype;
+			resultado_comision comision%rowtype;
+			resultado_cursada cursada%rowtype;
+			materia_aprobada historia_academica%rowtype;
+		begin
+			select * into resultado_periodo from periodo where estado = 'inscripcion';
+			
+			if not found then
+				raise 'periodo de inscripción cerrado'
+			end if;
+			
+			select * into resultado_alumne from alumne where id_alumne = id_alumne_buscado;
+			
+			if not found then
+				raise 'id de alumne no válido'
+			end if;
+			
+			select * into resultado_materia from materia where id_materia = id_materia_buscada;
+			materias_aprobadas
+			if not found then
+				raise 'id de materia no válido'
+			end if;
+			
+			select * into resultado_comision from comision where id_comision = id_comision_buscada;
+			
+			if not found then
+				raise 'id de comisión no válido'
+			end if;
+			
+			select * into resultado_cursada from cursada where id_alumne = id_alumne_buscado and id_materia = id_materia_buscada and estado = 'aceptade';
+			
+			if found then
+				raise 'alumne ya inscripte en la materia'
+			end if;
+			
+			for correlativa in select * from correlatividad where id_materia = id_materia_buscada loop
+				for materia_aprobada in select * from historia_academica where id_alumne = id_alumne_buscado and (estado = 'regular' or estado = 'aprobada') loop
+					if extract(id_materia from materia_aprobada) = extract(id_materia_correlativa from correlativa) then
+						
+	`)
 }
 
 
