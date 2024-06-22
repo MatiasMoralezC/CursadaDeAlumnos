@@ -83,8 +83,9 @@ type Envio_mail struct {
 }
 
 func main() {
-ejecutarPrograma()
-// configurar la conexión a la base de datos
+    ejecutarPrograma()
+
+    /*// Configurar la conexión a la base de datos
     connStr := "user=postgres host=localhost dbname=garcia_montoro_moralez_rodriguez_db1 sslmode=disable"
     db, err := sql.Open("postgres", connStr)
     if err != nil {
@@ -92,21 +93,13 @@ ejecutarPrograma()
     }
     defer db.Close()
 
-    // cargar la función SQL en la base de datos
-    err = loadIngresoNota(db)
+    // Cargar las funciones SQL en la base de datos
+    err = loadAllStoredProcedures(db)
     if err != nil {
-        log.Fatalf("error al cargar la función SQL: %v\n", err)
+        log.Fatalf("Error al cargar las funciones SQL: %v\n", err)
     }
 
-    fmt.Println("función SQL cargada exitosamente.")
-
-    // definir las variables de salida
-    var p_result bool
-    var p_error_message string
-    id_alumne_buscado := 1        // ID DEL ALUMNO
-    id_materia_buscada := 1       // ID DE LA MATERIA
-    id_comision_buscada := 1      // ID COMISION BUSCADA
-    nota_ingresada := 8           // NOTA A INGRESAR
+    fmt.Println("Funciones SQL cargadas exitosamente.")
 
     // llamar a la función apertura_inscripcion
     query := `SELECT * FROM ingreso_nota($1, $2, $3, $4)`
@@ -121,7 +114,7 @@ ejecutarPrograma()
         fmt.Printf("Error: %s\n", p_error_message)
     } else {
         fmt.Println("Nota ingresada o actualizada exitosamente.")
-    }
+    }*/
 }
 
 func mostrarOpciones() int {
@@ -132,9 +125,8 @@ func mostrarOpciones() int {
 	fmt.Printf ("Para agregar las primary keys, escriba el nùmero 4\n")
 	fmt.Printf ("Para agregar las foreign keys, escriba el nùmero 5\n")
 	fmt.Printf ("Para borrar las Primary Keys y las Foreign Keys 6\n")
-	fmt.Printf ("Para cargar la funcion de inscripción a materia, escriba el nùmero 7\n")
-	fmt.Printf ("Para cargar la funcion de aplicación de cupos, escriba el nùmero 8\n")
-	fmt.Printf ("Para salir, escriba el nùmero 9\n")
+	fmt.Printf ("Para cargar todos los Stored Procedures, escriba el nùmero 7\n")
+	fmt.Printf ("Para salir, escriba el nùmero 8\n")
 
 	var opcion int
 	fmt.Scanf("%d",&opcion)
@@ -171,12 +163,9 @@ func ejecutarPrograma() {
 		borrarKeys ()
 
 		case 7:
-		cargarInscripcionMateria()
+		loadAllStoredProcedures()
 		
 		case 8:
-		cargarAplicacionDeCupos()
-
-		case 9:
 		fmt.Printf("¡Hasta la proxima!\n")
 		os.Exit(0)
 		default:
@@ -457,7 +446,14 @@ func levantarJSons() {
 	fmt.Printf("Tabla de historias académicas cargada.\n")
 }
 
-func cargarInscripcionMateria() {
+func loadAllStoredProcedures() {
+	loadInscripcionMateria()
+	loadAperturaInscripcion()
+	loadAplicacionDeCupos()
+	loadIngresoNota()
+}
+
+func loadInscripcionMateria() {
 	db,err := sql.Open("postgres", "user=postgres host=localhost dbname=garcia_montoro_moralez_rodriguez_db1 sslmode=disable")
 	if err!= nil{
 		log.Fatal(err)
@@ -543,11 +539,17 @@ func cargarInscripcionMateria() {
 }
 
 // CARGA EL SP EN LA DB NO LO EJECUTA, DSPS LO EJECUTAMOS EN EL MAIN
-func loadAperturaInscripcion(db *sql.DB) error {
-    sql := `
-    create or replace function apertura_inscripcion(p_semestre varchar(7), out p_result boolean, out p_error_message text) as $$
+func loadAperturaInscripcion() {
+    db,err := sql.Open("postgres", "user=postgres host=localhost dbname=garcia_montoro_moralez_rodriguez_db1 sslmode=disable")
+	if err!= nil{
+		log.Fatal(err)
+	}
+	defer db.Close()
+	
+	_, err = db.Exec(`
+    create or replace function apertura_inscripcion(p_semestre varchar(6), out p_result boolean, out p_error_message text) as $$
     declare
-        v_estado_actual varchar(7);
+        v_estado_actual varchar(6);
         v_anio_actual int;
         v_count int;
         v_semestre char(1);
@@ -585,16 +587,16 @@ func loadAperturaInscripcion(db *sql.DB) error {
             return;
         end if;
 
-        insert into periodo (semestre, estado) values (p_semestre, 'abierto')
+        insert into periodo (semestre, estado) values (p_semestre, 'inscripcion')
         on conflict (semestre) do update set estado = excluded.estado;
 
         p_result := true;
     end;
     $$ language plpgsql;
-    `
-
-    _, err := db.Exec(sql)
-    return err
+    `)
+	if err!= nil{
+		log.Fatal(err)
+	}
 }
 
 
@@ -695,7 +697,7 @@ func cierreDeInscripcion (){
 		`)
 }
 
-func cargarAplicacionDeCupos(){
+func loadAplicacionDeCupos(){
 	db,err := sql.Open("postgres", "user=postgres host=localhost dbname=garcia_montoro_moralez_rodriguez_db1 sslmode=disable")
 	if err!= nil{
 		log.Fatal(err)
@@ -761,8 +763,14 @@ func cargarAplicacionDeCupos(){
 }
 
 // CARGA LA NOTA DE CURSADA
-func loadIngresoNota(db *sql.DB) error {
-    sql := `
+func loadIngresoNota() {
+	db,err := sql.Open("postgres", "user=postgres host=localhost dbname=garcia_montoro_moralez_rodriguez_db1 sslmode=disable")
+	if err!= nil{
+		log.Fatal(err)
+	}
+	defer db.Close()
+	
+	_, err = db.Exec(`
     create or replace function ingreso_nota(id_alumne_buscado int, id_materia_buscada int, id_comision_buscada int, nota_ingresada int, out p_result boolean, out p_error_message text) as $$
     declare
         v_count int;
@@ -826,10 +834,10 @@ func loadIngresoNota(db *sql.DB) error {
 		
 	end;
 	$$ language plpgsql;
-	`
-
-	_, err := db.Exec(sql)
-	return err
+	`)
+	if err!= nil{
+		log.Fatal(err)
+	}
 }
 
 
