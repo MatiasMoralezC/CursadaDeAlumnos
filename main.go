@@ -598,7 +598,7 @@ func bajaDeInscripcion (id_alumne int, id_materia int){
 	}
 	defer db.Close()
 	_, err = db.Exec(`
-		create function inscripcion_materia(id_alumne_buscade integer, id_materia_buscada integer) returns void as $$
+		create function bajaDeInscripcion(id_alumne_buscade integer, id_materia_buscada integer) returns void as $$
 		declare
 			resultado_periodo periodo%rowtype;
 			resultado_alumne alumne%rowtype;
@@ -640,8 +640,15 @@ func bajaDeInscripcion (id_alumne int, id_materia int){
 					order by fecha_inscripcion asc
 					limit 1;
 					alumne_enespera_encontrade = true;
-					
-			update cursada set estado = 'aceptade' where cursada.id_alumne = alumne_enespera.id_alumne 
+					end if;
+				end loop;
+				
+				if not materia_encontrada then
+					alumne_enespera_encontrade = false;
+				end if;
+			end loop;
+			
+			update cursada set estado = 'aceptade' where id_alumne = alumne_enespera.id_alumne 
 					
 			end;
 			$$ language plpgsql;
@@ -650,8 +657,37 @@ func bajaDeInscripcion (id_alumne int, id_materia int){
 	if err != nil {
 		log.Fatal(err)
 	}
-		
 	}
+	// TENGO QUE ARREGLAR EL CIERRE DEL LOOP
+	
+func cierreDeInscripcion (){
+	db,err := sql.Open("postgres", "user=postgres host=localhost dbname=garcia_montoro_moralez_rodriguez_db1 sslmode=disable")
+	if err!= nil{
+		log.Fatal(err)
+	}
+	defer db.Close()
+	_, err = db.Exec(`
+		create function cierreDeInscripcion(año_buscado integer, nroDeSemestre_buscado integer) returns void as $$
+		declare
+			resultado_periodo periodo%rowtype;
+			semestre_buscado text;
+			
+		begin
+			semestre_buscado := año_buscado || '-' || nroDeSemestre_buscado
+			
+			select * into resultado_año from periodo where semestre = semestre_buscado and estado = 'inscripcion' ;
+			
+			if not found then
+				raise 'el semestre no existe en periodo de inscripcion';
+			end if;
+			
+		update periodo set estado = 'cierre inscrip' where semestre = semestre_buscado
+		
+		end;
+			$$ language plpgsql;
+		`)
+	}
+	
 
 
 
