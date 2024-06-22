@@ -468,7 +468,6 @@ func cargarInscripcionMateria() {
 		log.Fatal(err)
 	}
 	
-	//Tengo que verificar que la comision sea valida
 	_, err = db.Exec(`
 		create function inscripcion_materia(id_alumne_buscado integer, id_materia_buscada integer, id_comision_buscada integer) returns void as $$
 		declare
@@ -500,7 +499,7 @@ func cargarInscripcionMateria() {
 				raise 'id de materia no válido';
 			end if;
 			
-			select * into resultado_comision from comision where id_comision = id_comision_buscada;
+			select * into resultado_comision from comision where id_materia = id_materia_buscada and id_comision = id_comision_buscada;
 			
 			if not found then
 				raise 'id de comisión no válido';
