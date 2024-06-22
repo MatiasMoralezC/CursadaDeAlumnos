@@ -93,7 +93,7 @@ ejecutarPrograma()
     defer db.Close()
 
     // cargar la función SQL en la base de datos
-    err = loadAperturaInscripcion(db)
+    err = loadIngresoNota(db)
     if err != nil {
         log.Fatalf("error al cargar la función SQL: %v\n", err)
     }
@@ -103,21 +103,24 @@ ejecutarPrograma()
     // definir las variables de salida
     var p_result bool
     var p_error_message string
-    p_semestre := "2024-1" // definir el anio / semestre
+    id_alumne_buscado := 1        // ID DEL ALUMNO
+    id_materia_buscada := 1       // ID DE LA MATERIA
+    id_comision_buscada := 1      // ID COMISION BUSCADA
+    nota_ingresada := 8           // NOTA A INGRESAR
 
     // llamar a la función apertura_inscripcion
-    query := `select * from apertura_inscripcion($1)`
-    err = db.QueryRow(query, p_semestre).Scan(&p_result, &p_error_message)
+    query := `SELECT * FROM ingreso_nota($1, $2, $3, $4)`
+    err = db.QueryRow(query, id_alumne_buscado, id_materia_buscada, id_comision_buscada, nota_ingresada).Scan(&p_result, &p_error_message)
     if err != nil {
         log.Fatal(err)
     }
 
     // mostrar el resultado
-    fmt.Printf("result: %v\n", p_result)
+    fmt.Printf("Result: %v\n", p_result)
     if p_error_message != "" {
-        fmt.Printf("error: %s\n", p_error_message)
+        fmt.Printf("Error: %s\n", p_error_message)
     } else {
-        fmt.Println("inscripción abierta exitosamente.")
+        fmt.Println("Nota ingresada o actualizada exitosamente.")
     }
 }
 
@@ -755,6 +758,78 @@ func cargarAplicacionDeCupos(){
 	if err!= nil{
 		log.Fatal(err)
 	}
+}
+
+// CARGA LA NOTA DE CURSADA
+func loadIngresoNota(db *sql.DB) error {
+    sql := `
+    create or replace function ingreso_nota(id_alumne_buscado int, id_materia_buscada int, id_comision_buscada int, nota_ingresada int, out p_result boolean, out p_error_message text) as $$
+    declare
+        v_count int;
+    begin
+        p_error_message := '';
+
+        select count(*) into v_count from periodo where estado = 'cursada';
+
+		if v_count = 0 then
+            p_result := false;
+            p_error_message := 'periodo de cursada cerrado';
+            return;
+        end if;
+        
+		if not exists (select 1 from alumne where id_alumne = id_alumne_buscado) then
+	        p_result := false;
+	        p_error_message := 'id de alumne no valido';
+            return;
+        end if;
+        
+		if not exists (select 1 from materia where id_materia = id_materia_buscada) then
+	        p_result := false;
+	        p_error_message := 'id de materia no valido';
+            return;
+        end if;
+      
+		if not exists (
+			select 1 from comision
+			where id_materia = id_materia_buscada and
+			id_comision = id_comision_buscada
+			) then
+				p_result := false;
+				p_error_message := 'id de comision no valido para la materia';
+				return;
+        end if;
+        
+		if not exists (
+			select 1 from cursada
+			where id_alumne = id_alumne_buscado and
+			id_materia = id_materia_buscada and
+			id_comision = id_comision_buscada
+			) then
+				p_result := false;
+				p_error_message := 'alumne no cursa en la comision';
+				return;
+		end if;
+        
+		if nota < 0 or nota > 10 then
+            p_result := false;
+            p_error_message := 'nota no valida: ' || nota;
+            return;
+        end if; 
+        
+		update cursada 
+		set nota = nota_ingresada
+		where id_alumne = id_alumne_buscado 
+		and id_materia = id_materia_buscada 
+		and id_comision = id_comision_buscada;
+
+		p_result := true;
+		
+	end;
+	$$ language plpgsql;
+	`
+
+	_, err := db.Exec(sql)
+	return err
 }
 
 
