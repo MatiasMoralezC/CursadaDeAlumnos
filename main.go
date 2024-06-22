@@ -591,6 +591,67 @@ func loadAperturaInscripcion(db *sql.DB) error {
 }
 
 
+func bajaDeInscripcion (id_alumne int, id_materia int){
+	db,err := sql.Open("postgres", "user=postgres host=localhost dbname=garcia_montoro_moralez_rodriguez_db1 sslmode=disable")
+	if err!= nil{
+		log.Fatal(err)
+	}
+	defer db.Close()
+	_, err = db.Exec(`
+		create function inscripcion_materia(id_alumne_buscade integer, id_materia_buscada integer) returns void as $$
+		declare
+			resultado_periodo periodo%rowtype;
+			resultado_alumne alumne%rowtype;
+			resultado_materia materia%rowtype;
+			resultado_comision comision%rowtype;
+			resultado_cursada cursada%rowtype;
+			alumne_enespera alumne%rowtype;
+			
+		begin
+			select * into resultado_periodo from periodo where estado = 'inscripcion' or estado = 'cursada';
+			
+			if not found then
+				raise 'no se permiten bajas en este periodo';
+			end if;
+			
+			select * into resultado_alumne from alumne where id_alumne = id_alumne_buscade;
+			
+			if not found then
+				raise 'id de alumne no válido';
+			end if;
+			
+			select * into resultado_materia from materia where id_materia = id_materia_buscada;
+			
+			if not found then
+				raise 'id de materia no válido';
+			end if;
+			
+			select * into resultado_cursada from cursada where id_alumne = id_alumne_buscade and id_materia = id_materia_buscada and estado = 'ingresade';
+			
+			if found then
+				raise 'alumne no inscripte en la materia';
+			end if;
+			
+			update cursada set estado = 'dade de baja' where cursada.id_alumne = id_alumne_buscade;
+			
+			for cursada in select * from cursada where id_materia = id_materia_buscada and periodo.estado  = 'cursada'  and periodo.semestre = semestre_actual loop
+				alumne_enespera_encontrade := false;
+				for alumne_enespera in select * from cursada where alumne.estado = 'en espera'
+					order by fecha_inscripcion asc
+					limit 1;
+					alumne_enespera_encontrade = true;
+					
+			update cursada set estado = 'aceptade' where cursada.id_alumne = alumne_enespera.id_alumne 
+					
+			end;
+			$$ language plpgsql;
+	`)
+	
+	if err != nil {
+		log.Fatal(err)
+	}
+		
+	}
 
 
 
