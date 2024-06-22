@@ -129,8 +129,9 @@ func mostrarOpciones() int {
 	fmt.Printf ("Para agregar las primary keys, escriba el nùmero 4\n")
 	fmt.Printf ("Para agregar las foreign keys, escriba el nùmero 5\n")
 	fmt.Printf ("Para borrar las Primary Keys y las Foreign Keys 6\n")
-	fmt.Printf ("Para realizar la inscripciòn a una materia, escriba el nùmero 7\n")
-	fmt.Printf ("Para salir, escriba el nùmero 8\n")
+	fmt.Printf ("Para cargar la funcion de inscripción a materia, escriba el nùmero 7\n")
+	fmt.Printf ("Para cargar la funcion de aplicación de cupos, escriba el nùmero 8\n")
+	fmt.Printf ("Para salir, escriba el nùmero 9\n")
 
 	var opcion int
 	fmt.Scanf("%d",&opcion)
@@ -167,9 +168,12 @@ func ejecutarPrograma() {
 		borrarKeys ()
 
 		case 7:
-		inscripcionMateria()
-
+		cargarInscripcionMateria()
+		
 		case 8:
+		cargarAplicacionDeCupos()
+
+		case 9:
 		fmt.Printf("¡Hasta la proxima!\n")
 		os.Exit(0)
 		default:
@@ -227,7 +231,7 @@ func createDbTables() {
 					create table correlatividad(id_materia int, id_materia_correlativa int);
 					create table comision(id_materia int, id_comision int, cupo int);
 					create table cursada(id_materia int, id_alumne int, id_comision int, f_inscripcion timestamp, nota int, estado char(12));
-					create table periodo(semestre char(12), estado char(12));
+					create table periodo(semestre char(6), estado char(15));
 					create table historia_academica(id_alumne int, semestre text, id_materia int, id_comision int, estado char(15), nota_regular int, nota_final int);
 					create table error(id_error int, operacion char(15), semestre text, id_alumne int, id_materia int, id_comision int, f_error timestamp, motivo char(64));
 					create table envio_mail(id_email int, f_generacion timestamp, email_alumne text, asunto text, cuerpo text, f_envio timestamp, estado char(10));
@@ -450,7 +454,7 @@ func levantarJSons() {
 	fmt.Printf("Tabla de historias académicas cargada.\n")
 }
 
-func inscripcionMateria() {
+func cargarInscripcionMateria() {
 	db,err := sql.Open("postgres", "user=postgres host=localhost dbname=garcia_montoro_moralez_rodriguez_db1 sslmode=disable")
 	if err!= nil{
 		log.Fatal(err)
@@ -464,6 +468,7 @@ func inscripcionMateria() {
 		log.Fatal(err)
 	}
 	
+	//Tengo que verificar que la comision sea valida
 	_, err = db.Exec(`
 		create function inscripcion_materia(id_alumne_buscado integer, id_materia_buscada integer, id_comision_buscada integer) returns void as $$
 		declare
@@ -511,7 +516,7 @@ func inscripcionMateria() {
 			for correlativa in select * from correlatividad where id_materia = id_materia_buscada loop
 				materia_encontrada := false;
 				for materia_aprobada in select * from historia_academica where id_alumne = id_alumne_buscado and (estado = 'regular' or estado = 'aprobada') loop
-					if extract(id_materia from materia_aprobada) = extract(id_materia_correlativa from correlativa) then
+					if materia_aprobada.id_materia = correlativa.id_materia_correlativa then
 						materia_encontrada = true;
 					end if;
 				end loop;
@@ -686,8 +691,75 @@ func cierreDeInscripcion (){
 		end;
 			$$ language plpgsql;
 		`)
+}
+
+func cargarAplicacionDeCupos(){
+	db,err := sql.Open("postgres", "user=postgres host=localhost dbname=garcia_montoro_moralez_rodriguez_db1 sslmode=disable")
+	if err!= nil{
+		log.Fatal(err)
+	}
+	defer db.Close()
+	
+	//Hardcodeo cierre de inscripcion
+	_, err = db.Exec(`insert into periodo values('2025-1', 'cierre inscrip')`)
+	if err!= nil{
+		log.Fatal(err)
 	}
 	
+	_, err = db.Exec(`
+		create function aplicacion_cupos(semestre_buscado varchar(6)) returns void as $$
+		declare
+			periodo_encontrado periodo%rowtype;
+			cupo_materia int;
+			id_materia_buscada int := 1;
+			id_comision_buscada int;
+			alumne_inscripte cursada%rowtype;
+			comision_materia comision%rowtype;
+			materia comision%rowtype;
+		begin
+			select * into periodo_encontrado from periodo where semestre = semestre_buscado and estado = 'cierre inscrip';
+			
+			if not found then
+				raise 'el semestre % no se encuentra en un período válido para aplicar cupos', semestre_buscado;
+			end if;
+			
+			loop
+				perform 1 from comision where id_materia = id_materia_buscada;
+				exit when not found;
+			
+				for comision_materia in select * from comision where id_materia = id_materia_buscada loop
+					id_comision_buscada := comision_materia.id_comision;
+					
+					select cupo into cupo_materia from comision where id_materia = id_materia_buscada and id_comision = comision_materia.id_comision;
+					
+					for alumne_inscripte in (select * from cursada where id_materia = id_materia_buscada and id_comision = id_comision_buscada and estado = 'ingresade' order by f_inscripcion asc limit cupo_materia) loop
+						update cursada set estado = 'aceptade' 
+						where id_alumne = alumne_inscripte.id_alumne 
+						and id_materia = alumne_inscripte.id_materia 
+						and id_comision = alumne_inscripte.id_comision;
+					end loop;
+				
+				update cursada set estado = 'en espera'
+				where id_materia = id_materia_buscada and id_comision = comision_materia.id_comision and estado = 'ingresade';
+				
+				end loop;
+				
+				id_materia_buscada := id_materia_buscada + 1;
+			end loop;
+			
+			update periodo set estado = 'cursada'
+			where estado = 'cierre inscrip';
+			
+		end;
+		$$ language plpgsql;
+	`)
+	if err!= nil{
+		log.Fatal(err)
+	}
+}
+
+
+
 
 
 
