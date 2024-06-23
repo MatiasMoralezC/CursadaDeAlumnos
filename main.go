@@ -884,7 +884,7 @@ func loadEmailAltaInscripcion() {
 	execute function email_alta_inscipcion();
 	`
 	
-	_, err := db.Exec(query)
+	_, err = db.Exec(query)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -928,7 +928,7 @@ func loadEmailBajaInscripcion() {
 	when (NEW.estado = 'dade de baja')
 	execute function email_baja_inscripcion();
 	`
-	_, err := db.Exec(query)
+	_, err = db.Exec(query)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -937,7 +937,7 @@ func loadEmailBajaInscripcion() {
 }
 
 //Se dispara cuando la inscripcion es aceptada
-func loadEmailAplicacionCupos(db *sql.DB) {
+func loadEmailAplicacionCupos() {
 	db,err := sql.Open("postgres", "user=postgres host=localhost dbname=garcia_montoro_moralez_rodriguez_db1 sslmode=disable")
 	if err!= nil{
 		log.Fatal(err)
@@ -981,7 +981,7 @@ func loadEmailAplicacionCupos(db *sql.DB) {
 	execute	function email_aplicacion_cupos();
 	`
 	
-	_, err := db.Exec(query)
+	_, err = db.Exec(query)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -990,7 +990,7 @@ func loadEmailAplicacionCupos(db *sql.DB) {
 
 
 // Se dispara cuando la inscripcion en espera pasa a aceptada
-func loadEmailInscripcionEnEspera(db *sql.DB) {
+func loadEmailInscripcionEnEspera() {
 	db,err := sql.Open("postgres", "user=postgres host=localhost dbname=garcia_montoro_moralez_rodriguez_db1 sslmode=disable")
 	if err!= nil{
 		log.Fatal(err)
@@ -1027,7 +1027,7 @@ func loadEmailInscripcionEnEspera(db *sql.DB) {
 	execute function email_inscripcion_lista_espera();
 	`
 	
-	_, err := db.Exec(query)
+	_, err = db.Exec(query)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -1035,7 +1035,7 @@ func loadEmailInscripcionEnEspera(db *sql.DB) {
 }
 
 //Se ejecuta cuando se cierra la cursada de una comision_numero
-func loadEmailCierreCursada(db *sql.DB) {
+func loadEmailCierreCursada() {
 	db,err := sql.Open("postgres", "user=postgres host=localhost dbname=garcia_montoro_moralez_rodriguez_db1 sslmode=disable")
 	if err!= nil{
 		log.Fatal(err)
@@ -1081,7 +1081,7 @@ func loadEmailCierreCursada(db *sql.DB) {
 	execute function email_cierre_cursada();
 	`
 	
-	_, err := db.Exec(query)
+	_, err = db.Exec(query)
 	if err != nil {
 		log.Fatal(err)
 	}
