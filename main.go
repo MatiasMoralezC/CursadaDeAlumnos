@@ -451,12 +451,15 @@ func loadAllStoredProcedures() {
 	loadAperturaInscripcion()
 	loadAplicacionDeCupos()
 	loadIngresoNota()
+	loadBajaDeInscripcion ()
+	loadCierreDeInscripcion ()
 	
 	loadEmailAltaInscripcion()
 	loadEmailBajaInscripcion()
 	loadEmailAplicacionCupos()
 	loadEmailInscripcionEnEspera()
 	loadEmailCierreCursada()
+	
 }
 
 func loadInscripcionMateria() {
@@ -606,102 +609,109 @@ func loadAperturaInscripcion() {
 }
 
 
-func bajaDeInscripcion (id_alumne int, id_materia int){
+func loadBajaDeInscripcion (){
 	db,err := sql.Open("postgres", "user=postgres host=localhost dbname=garcia_montoro_moralez_rodriguez_db1 sslmode=disable")
 	if err!= nil{
-		log.Fatal(err)
+	log.Fatal(err)
 	}
 	defer db.Close()
+	//hardcodeo inscripcion en cursada
+	_, err = db.Exec(`insert into periodo values('2024-2','cursada');`)
+	if err!= nil{
+	log.Fatal(err)
+	}
 	_, err = db.Exec(`
-		create function bajaDeInscripcion(id_alumne_buscade integer, id_materia_buscada integer) returns void as $$
+	create function bajaDeInscripcion(id_alumne_buscade integer, id_materia_buscada integer) returns void as $$
+	declare
+		resultado_periodo periodo%rowtype;
+		resultado_alumne alumne%rowtype;
+		resultado_materia materia%rowtype;
+		resultado_comision comision%rowtype;
+		resultado_cursada cursada%rowtype;
+
+
+		cursada record;
+		alumne_enespera record;
+
+	begin
+		select * into resultado_periodo from periodo where estado = 'inscripcion' or estado = 'cursada';
+
+		if not found then
+		raise 'no se permiten bajas en este periodo';
+		end if;
+
+		select * into resultado_alumne from alumne where id_alumne = id_alumne_buscade;
+
+		if not found then
+		raise 'id de alumne no válido';
+		end if;
+
+		select * into resultado_materia from materia where id_materia = id_materia_buscada;
+
+		if not found then
+		raise 'id de materia no válido';
+		end if;
+
+		select * into resultado_cursada from cursada where id_alumne = id_alumne_buscade and id_materia = id_materia_buscada and estado = 'ingresade';
+
+		if found then
+		raise 'alumne no inscripte en la materia';
+		end if;
+
+		update cursada set estado = 'dade de baja' where cursada.id_alumne = id_alumne_buscade;
+
+
+		if resultado_periodo.estado = 'cursada' then
+			select * from cursada where id_materia = id_materia_buscada and id_alumne = alumne_enespera.id and estado = 'en espera'
+			order by f_inscripcion asc limit 1;
+			if not found then
+				raise 'alumne no cumple requisitos de correlatividad';
+			end if;
+
+			update cursada set estado = 'aceptade' where id_alumne = alumne_enespera.id_alumne ;
+		end if;
+
+	end;
+	$$ language plpgsql;
+`)
+
+if err != nil {
+log.Fatal(err)
+}
+}
+
+
+func loadCierreDeInscripcion (){
+	db,err := sql.Open("postgres", "user=postgres host=localhost dbname=garcia_montoro_moralez_rodriguez_db1 sslmode=disable")
+	if err!= nil{
+	log.Fatal(err)
+	}
+	defer db.Close()
+
+	//hardcodeo inscripcion abierta
+	_, err = db.Exec(`insert into periodo values('2025-1', 'inscripcion')`)
+	if err!= nil{
+	log.Fatal(err)
+	}
+	_, err = db.Exec(`
+		create function cierreDeInscripcion(semestre_buscado text) returns void as $$
 		declare
 			resultado_periodo periodo%rowtype;
-			resultado_alumne alumne%rowtype;
-			resultado_materia materia%rowtype;
-			resultado_comision comision%rowtype;
-			resultado_cursada cursada%rowtype;
-			alumne_enespera alumne%rowtype;
-			
+
 		begin
-			select * into resultado_periodo from periodo where estado = 'inscripcion' or estado = 'cursada';
-			
+
+			select * into resultado_año from periodo where semestre = semestre_buscado and estado = 'inscripcion' ;
+
 			if not found then
-				raise 'no se permiten bajas en este periodo';
+			raise 'el semestre no existe en periodo de inscripcion';
 			end if;
-			
-			select * into resultado_alumne from alumne where id_alumne = id_alumne_buscade;
-			
-			if not found then
-				raise 'id de alumne no válido';
-			end if;
-			
-			select * into resultado_materia from materia where id_materia = id_materia_buscada;
-			
-			if not found then
-				raise 'id de materia no válido';
-			end if;
-			
-			select * into resultado_cursada from cursada where id_alumne = id_alumne_buscade and id_materia = id_materia_buscada and estado = 'ingresade';
-			
-			if found then
-				raise 'alumne no inscripte en la materia';
-			end if;
-			
-			update cursada set estado = 'dade de baja' where cursada.id_alumne = id_alumne_buscade;
-			
-			for cursada in select * from cursada where id_materia = id_materia_buscada and periodo.estado  = 'cursada'  and periodo.semestre = semestre_actual loop
-				alumne_enespera_encontrade := false;
-				for alumne_enespera in select * from cursada where alumne.estado = 'en espera'
-					order by fecha_inscripcion asc
-					limit 1;
-					alumne_enespera_encontrade = true;
-					end if;
-				end loop;
-				
-				if not materia_encontrada then
-					alumne_enespera_encontrade = false;
-				end if;
-			end loop;
-			
-			update cursada set estado = 'aceptade' where id_alumne = alumne_enespera.id_alumne 
-					
+
+			update periodo set estado = 'cierre inscrip' where semestre = semestre_buscado;
+
 			end;
 			$$ language plpgsql;
 	`)
-	
-	if err != nil {
-		log.Fatal(err)
 	}
-	}
-	// TENGO QUE ARREGLAR EL CIERRE DEL LOOP
-	
-func cierreDeInscripcion (){
-	db,err := sql.Open("postgres", "user=postgres host=localhost dbname=garcia_montoro_moralez_rodriguez_db1 sslmode=disable")
-	if err!= nil{
-		log.Fatal(err)
-	}
-	defer db.Close()
-	_, err = db.Exec(`
-		create function cierreDeInscripcion(año_buscado integer, nroDeSemestre_buscado integer) returns void as $$
-		declare
-			resultado_periodo periodo%rowtype;
-			semestre_buscado text;
-			
-		begin
-			semestre_buscado := año_buscado || '-' || nroDeSemestre_buscado
-			
-			select * into resultado_año from periodo where semestre = semestre_buscado and estado = 'inscripcion' ;
-			
-			if not found then
-				raise 'el semestre no existe en periodo de inscripcion';
-			end if;
-			
-		update periodo set estado = 'cierre inscrip' where semestre = semestre_buscado
-		
-		end;
-			$$ language plpgsql;
-		`)
-}
 
 func loadAplicacionDeCupos(){
 	db,err := sql.Open("postgres", "user=postgres host=localhost dbname=garcia_montoro_moralez_rodriguez_db1 sslmode=disable")
