@@ -72,7 +72,7 @@ type Error struct {
 	Motivo string
 }
 
-type Envio_mail struct {
+type Envio_email struct {
 	Id_email int
 	F_generacion string
 	Email_alumne string
@@ -195,7 +195,7 @@ func createDbTables() {
 					create table periodo(semestre char(6), estado char(15));
 					create table historia_academica(id_alumne int, semestre text, id_materia int, id_comision int, estado char(15), nota_regular int, nota_final int);
 					create table error(id_error int, operacion char(15), semestre text, id_alumne int, id_materia int, id_comision int, f_error timestamp, motivo char(64));
-					create table envio_mail(id_email int, f_generacion timestamp, email_alumne text, asunto text, cuerpo text, f_envio timestamp, estado char(10));
+					create table envio_email(id_email int, f_generacion timestamp, email_alumne text, asunto text, cuerpo text, f_envio timestamp, estado char(10));
 					create table entrada_trx(id_orden int, operacion char(15), año int, nro_semestre int, id_alumne int, id_comision int);`)
 	if err!= nil {
 		log.Fatal(err)
@@ -219,7 +219,7 @@ func agregarPrimaryKey (){
 					alter table periodo add constraint pk_periodo primary key (semestre);
 					alter table historia_academica add constraint pk_academica primary key (id_alumne, semestre, id_materia);
 					alter table error add constraint pk_error primary key (id_error);
-					alter table envio_mail add constraint pk_envio_mail primary key (id_email);`)
+					alter table envio_email add constraint pk_envio_email primary key (id_email);`)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -278,7 +278,7 @@ func borrarKeys (){
 					alter table periodo drop constraint pk_periodo;
 					alter table historia_academica drop constraint pk_academica;
 					alter table error drop constraint pk_error;
-					alter table envio_mail drop constraint pk_envio_mail;`)
+					alter table envio_email drop constraint pk_envio_email;`)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -513,6 +513,8 @@ func loadInscripcionMateria() {
 	if err != nil {
 		log.Fatal(err)
 	}
+	
+	fmt.Printf("Funcion de inscripción a materia cargada.\n")
 }
 
 // CARGA EL SP EN LA DB NO LO EJECUTA, DSPS LO EJECUTAMOS EN EL MAIN
@@ -574,6 +576,8 @@ func loadAperturaInscripcion() {
 	if err!= nil{
 		log.Fatal(err)
 	}
+	
+	fmt.Printf("Funcion de apertura de inscripción cargada.\n")
 }
 
 
@@ -641,11 +645,13 @@ func loadBajaDeInscripcion (){
 
 	end;
 	$$ language plpgsql;
-`)
+	`)
 
-if err != nil {
-log.Fatal(err)
-}
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	fmt.Printf("Funcion de baja de inscripción cargada.\n")
 }
 
 
@@ -659,7 +665,7 @@ func loadCierreDeInscripcion (){
 	//hardcodeo inscripcion abierta
 	_, err = db.Exec(`insert into periodo values('2025-2', 'inscripcion')`)
 	if err!= nil{
-	log.Fatal(err)
+		log.Fatal(err)
 	}
 	_, err = db.Exec(`
 		create function cierreDeInscripcion(semestre_buscado text) returns void as $$
@@ -668,7 +674,7 @@ func loadCierreDeInscripcion (){
 
 		begin
 
-			select * into resultado_año from periodo where semestre = semestre_buscado and estado = 'inscripcion' ;
+			select * into resultado_periodo from periodo where semestre = semestre_buscado and estado = 'inscripcion' ;
 
 			if not found then
 			raise 'el semestre no existe en periodo de inscripcion';
@@ -679,8 +685,14 @@ func loadCierreDeInscripcion (){
 			end;
 			$$ language plpgsql;
 	`)
+	if err!= nil{
+		log.Fatal(err)
 	}
+	
+	fmt.Printf("Funcion de cierre de inscripción cargada.\n")
+}
 
+//ACA HAY QUE VER LO DE "DESHACER"
 func loadAplicacionDeCupos(){
 	db,err := sql.Open("postgres", "user=postgres host=localhost dbname=garcia_montoro_moralez_rodriguez_db1 sslmode=disable")
 	if err!= nil{
@@ -744,6 +756,8 @@ func loadAplicacionDeCupos(){
 	if err!= nil{
 		log.Fatal(err)
 	}
+	
+	fmt.Printf("Funcion de aplicación de cupos cargada.\n")
 }
 
 // CARGA LA NOTA DE CURSADA
@@ -819,9 +833,12 @@ func loadIngresoNota() {
 	end;
 	$$ language plpgsql;
 	`)
+	
 	if err!= nil{
 		log.Fatal(err)
 	}
+	
+	fmt.Printf("Funcion de ingresar notas cargada.\n")
 }
 
 //Se dispara cuando una inscripcion es registrada
@@ -845,10 +862,10 @@ func loadEmailAltaInscripcion() {
 		select id_comision into v_comision_numero from comision where id_materia = NEW.id_materia and id_comision = NEW.id_comision;
 		select nombre, apellido, email into v_alumne_nombre, v_alumne_apellido, v_email_alumne from alumne where id_alumne = NEW.id_alumne;
 		
-		insert into envio_email (f_generacion, email_alumne, asunto, cuerpo, f_envio, estado)
-		values (current_timestamp, v_email_alumne, 'Inscripcion registrada', 
-		'Hola ' || alumne_nombre || ' ' || alumne_apellido || ', tu inscripcion a la materia ' || materia_nombre || ', comision ' || comision_numero ||' ha sido registrada.',
-		null, 'pendiente' 
+		insert into envio_email
+		values(1, current_timestamp, v_email_alumne, 'Inscripcion registrada', 
+		'Hola ' || v_alumne_nombre || ' ' || v_alumne_apellido || ', tu inscripcion a la materia ' || v_materia_nombre || ', comision ' || v_comision_numero ||' ha sido registrada.',
+		current_timestamp, 'pendiente' 
 		);
 				
 		return old;
@@ -856,7 +873,7 @@ func loadEmailAltaInscripcion() {
 	$$ language plpgsql;
 	
 	create trigger email_alta_inscripcion_trg
-	after insert on cursada
+	after update on cursada
 	for each row
 	when (NEW.estado = 'aceptade')
 	execute function email_alta_inscipcion();
