@@ -451,15 +451,14 @@ func loadAllStoredProcedures() {
 	loadAperturaInscripcion()
 	loadAplicacionDeCupos()
 	loadIngresoNota()
-	loadBajaDeInscripcion ()
-	loadCierreDeInscripcion ()
+	loadBajaDeInscripcion()
+	loadCierreDeInscripcion()
 	
 	loadEmailAltaInscripcion()
 	loadEmailBajaInscripcion()
 	loadEmailAplicacionCupos()
 	loadEmailInscripcionEnEspera()
 	loadEmailCierreCursada()
-	
 }
 
 func loadInscripcionMateria() {
@@ -898,7 +897,7 @@ func loadEmailAltaInscripcion() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	fmt.Printf("Trigger 'email alta inscipcion' creado con exito")
+	fmt.Printf("Trigger 'email alta inscipcion' creado con exito.\n")
 }
 
 //Se dispara cuando la inscripcion es dada de baja
@@ -930,7 +929,7 @@ func loadEmailBajaInscripcion() {
 		
 		return old;
 	end;
-	$$ lenguage plpgsql;
+	$$ language plpgsql;
 		
 	create trigger email_baja_inscripcion_trg
 	after update on cursada
@@ -942,7 +941,7 @@ func loadEmailBajaInscripcion() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	fmt.Printf("Trigger 'email baja inscipcion' creado con exito")
+	fmt.Printf("Trigger 'email baja inscipcion' creado con exito.\n")
 	
 }
 
@@ -969,14 +968,14 @@ func loadEmailAplicacionCupos() {
 		select nombre, apellido, email into v_alumne_nombre, v_alumne_apellido, v_email_alumne from alumne where id_alumne = NEW.id_alumne;
 		
 		if new.estado = 'aceptade' then
-			v_estado_inscripcion := 'Inscripcion aceptada'
+			v_estado_inscripcion := 'aceptade';
 		else
-			v_estado_inscripcion := 'Inscripcion en espera'
+			v_estado_inscripcion := 'en espera';
 		end if;
 		
 		insert into envio_email (f_generacion, email_alumne, asunto, cuerpo, f_envio, estado)
 		values (current_timestamp, v_email_alumne, v_estado_inscripcion,
-		'Hola ' || alumne_nombre || ' ' || alumne_apellido || ', tu inscripcion a la materia ' || materia_nombre || ', comision ' || comision_numero ||' ha sido: ' ||  || 'v_estado_inscripcion.',
+		'Hola ' || alumne_nombre || ' ' || alumne_apellido || ', tu inscripcion a la materia ' || materia_nombre || ', comision ' || comision_numero ||' se encuentra: ' || 'v_estado_inscripcion.',
 		null, 'pendiente'
 		);
 		
@@ -995,7 +994,7 @@ func loadEmailAplicacionCupos() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	fmt.Printf("Trigger 'email aplicacion de cupo' creado con exito")
+	fmt.Printf("Trigger 'email aplicacion de cupo' creado con exito.\n")
 }
 
 
@@ -1008,7 +1007,7 @@ func loadEmailInscripcionEnEspera() {
 	defer db.Close()
 	
 	query := `
-	create or replace function email_inscripcion_lista_espera() return trigger as $$
+	create or replace function email_inscripcion_lista_espera() returns trigger as $$
 	declare
 		v_materia_nombre text;
 		v_comision_numero text;
@@ -1041,7 +1040,7 @@ func loadEmailInscripcionEnEspera() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	fmt.Printf("Trigger 'email inscripcion en espera' creado con exito")
+	fmt.Printf("Trigger 'email inscripcion en espera' creado con exito.\n")
 }
 
 //Se ejecuta cuando se cierra la cursada de una comision_numero
@@ -1095,7 +1094,7 @@ func loadEmailCierreCursada() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	fmt.Printf("Trigger 'email cierre cursada' creado con exito")
+	fmt.Printf("Trigger 'email cierre cursada' creado con exito.\n")
 }
 
 
