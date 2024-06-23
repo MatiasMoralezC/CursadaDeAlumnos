@@ -84,37 +84,6 @@ type Envio_mail struct {
 
 func main() {
     ejecutarPrograma()
-
-    /*// Configurar la conexión a la base de datos
-    connStr := "user=postgres host=localhost dbname=garcia_montoro_moralez_rodriguez_db1 sslmode=disable"
-    db, err := sql.Open("postgres", connStr)
-    if err != nil {
-        log.Fatal(err)
-    }
-    defer db.Close()
-
-    // Cargar las funciones SQL en la base de datos
-    err = loadAllStoredProcedures(db)
-    if err != nil {
-        log.Fatalf("Error al cargar las funciones SQL: %v\n", err)
-    }
-
-    fmt.Println("Funciones SQL cargadas exitosamente.")
-
-    // llamar a la función apertura_inscripcion
-    query := `SELECT * FROM ingreso_nota($1, $2, $3, $4)`
-    err = db.QueryRow(query, id_alumne_buscado, id_materia_buscada, id_comision_buscada, nota_ingresada).Scan(&p_result, &p_error_message)
-    if err != nil {
-        log.Fatal(err)
-    }
-
-    // mostrar el resultado
-    fmt.Printf("Result: %v\n", p_result)
-    if p_error_message != "" {
-        fmt.Printf("Error: %s\n", p_error_message)
-    } else {
-        fmt.Println("Nota ingresada o actualizada exitosamente.")
-    }*/
 }
 
 func mostrarOpciones() int {
@@ -324,7 +293,7 @@ func levantarJSons() {
 	}
 	defer db.Close()
 	
-	dataAlumnes, err := ioutil.ReadFile("alumnes.json")
+	dataAlumnes, err := ioutil.ReadFile("data/alumnes.json")
 	if err != nil{
 		log.Fatal(err)
 	}
@@ -344,7 +313,7 @@ func levantarJSons() {
 	
 	fmt.Printf("Tabla de alumnes cargada.\n")
 	
-	dataMaterias, err := ioutil.ReadFile("materias.json")
+	dataMaterias, err := ioutil.ReadFile("data/materias.json")
 	if err != nil{
 		log.Fatal(err)
 	}
@@ -364,7 +333,7 @@ func levantarJSons() {
 	
 	fmt.Printf("Tabla de materias cargada.\n")
 	
-	dataComisiones, err := ioutil.ReadFile("comisiones.json")
+	dataComisiones, err := ioutil.ReadFile("data/comisiones.json")
 	if err != nil{
 		log.Fatal(err)
 	}
@@ -384,7 +353,7 @@ func levantarJSons() {
 	
 	fmt.Printf("Tabla de comisiones cargada.\n")
 	
-	dataPeriodos, err := ioutil.ReadFile("periodos.json")
+	dataPeriodos, err := ioutil.ReadFile("data/periodos.json")
 	if err != nil{
 		log.Fatal(err)
 	}
@@ -404,7 +373,7 @@ func levantarJSons() {
 	
 	fmt.Printf("Tabla de periodos cargada.\n")
 	
-	dataCorrelativas, err := ioutil.ReadFile("correlatividades.json")
+	dataCorrelativas, err := ioutil.ReadFile("data/correlatividades.json")
 	if err != nil{
 		log.Fatal(err)
 	}
@@ -424,7 +393,7 @@ func levantarJSons() {
 	
 	fmt.Printf("Tabla de correlatividades cargada.\n")
 	
-	dataHistorias, err := ioutil.ReadFile("historia_academica.json")
+	dataHistorias, err := ioutil.ReadFile("data/historia_academica.json")
 	if err != nil{
 		log.Fatal(err)
 	}
