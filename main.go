@@ -615,7 +615,7 @@ func loadBajaDeInscripcion (){
 	}
 	defer db.Close()
 	//hardcodeo inscripcion en cursada
-	_, err = db.Exec(`insert into periodo values('2024-2','cursada');`)
+	_, err = db.Exec(`insert into periodo values('2026-1','cursada');`)
 	if err!= nil{
 	log.Fatal(err)
 	}
@@ -688,7 +688,7 @@ func loadCierreDeInscripcion (){
 	defer db.Close()
 
 	//hardcodeo inscripcion abierta
-	_, err = db.Exec(`insert into periodo values('2025-1', 'inscripcion')`)
+	_, err = db.Exec(`insert into periodo values('2025-2', 'inscripcion')`)
 	if err!= nil{
 	log.Fatal(err)
 	}
