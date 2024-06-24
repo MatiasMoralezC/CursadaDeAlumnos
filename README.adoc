@@ -1,0 +1,1100 @@
+= Trabajo Práctico - Base De Datos 1 - Primer Semestre 2024
+
+Joaquín Garcia <joaquin.augusto@hotmail.com>; Rodrigo Montoro
+<rodrigo.montoro@hotmail.com>; Matías
+Moralez<matiasmoralezc@gmail.com>; Luciano Rodriguez
+<luciano.rodriguez2201@mail.com>
+
+v1, {docdate}. Docentes Hernán Rondelli y Ximena Ebertz 
+
+:toc: 
+
+:toc-title: Contenidos
+
+:numbered:
+
+:source-highlighter: coderay 
+
+:tabsize: 4 
+
+
+
+== Introducción
+
+Este trabajo pŕactico consiste en modelar una base de datos que simula
+la inscripción de alumnes a materias y el registo de sus notas. Para
+ello se utilizan diferentes funciones y/o triggers, los cuales
+representan las acciones necesarias para cumplir dichos objetivos. Todo
+el código debe ser capaz de ejecutarse desde una aplicación CLI escrita
+en GO y por ultimo, se solicita guardar determinada información en una
+base de datos NoSQL basada en Json (utilizando BoltDB), para poder comparar
+el modelo relacional con uno no relacional NOSQL.
+
+
+== Descripción
+
+Comenzamos con la creación de un archivo prueba (que luego fue
+descartado) para tener una idea de como abordar la creación de tablas en
+lenguaje Go. A partir de ahí planificamos y separamos las funciones
+necesarias para darle formato a la tablas, otorgarles sus primary y
+foreing keys, poder borrarlas y cargar los datos desde el archivo Json.
+
+En esta primera parte del TP encontramos como dificultad el reto de
+aprender el lenguaje Go y adaptarlo al uso de psql ya que fue un
+lenguaje nuevo para nosotros. Una vez sentadas las bases, comenzamos con 
+las implementaciones SP y Triggers que mencionaremos más adelante.
+
+Al momento de realizar los triggers para el envio de emails, nos sugio
+una duda que el enunciado no contempla que es la siguiente: cada vez
+que se realice un envio de email, ¿el estado debe quedar pendiente?
+ya que si bien se simula el envio de la notificacion, no queda claro
+si debemos interpretar que el correo es enviado. En base a esto tambien
+se define el valor de la fecha de envio, por lo que decidimos dejarla en
+null, ya que no se realiza ningun envio mientras el sistema se ejecute.
+
+== Implementación
+
+// En esta sección incluimos el código fuente
+
+Ahora detallaremos la implementación de los SP y los Triggers.
+En esta parte del TP encontramos como dificultad que fue necesario
+"hardcodear" en la tabla dentro de los SP para verificar su correcto
+funcionamiento dentro del main.
+
+*inscripcion_materia(id_alumne_buscado integer, id_materia_buscada integer, id_comision_buscada integer)* esta funcion recibe como
+parametro el id de un alumne que debe estar ingresade en la tabla alumne(de lo contrario se devolverá un error), un id de materia y otro
+de comision, ambos en sus respectivas tablas (materia y cursada). Si no se cumplen las restricciones, los datos del error serán guardados
+en la tabla error. Dentro del código se produce un bucle que revisa dentro de las correlatividad las materias de las que es correlativa
+la materia dada, luego se realiza otro bucle donde se revisa el historial académico del alumne dade para comprobar que las materias esten
+regularizadas o aprobadas. Luego se agregan a la tabla cursada los valores dados  A continuación se detalla el contenido de la función:
+
+
+
+declare
+
+	resultado_periodo periodo%rowtype;
+
+	resultado_alumne alumne%rowtype;
+
+	resultado_materia materia%rowtype;
+
+	resultado_comision comision%rowtype;
+
+	resultado_cursada cursada%rowtype;
+
+	materia_aprobada historia_academica%rowtype;
+
+	correlativa correlatividad%rowtype;
+
+	materia_encontrada boolean;
+
+	correlativas_aprobadas boolean;
+
+begin
+
+	p_error_message := '';
+
+	select * into resultado_periodo from periodo where estado = 'inscripcion';
+	
+	if not found then
+
+		insert into error values(nextval('error_id_seq'), 'alta inscrip', resultado_periodo.semestre, id_alumne_buscado, id_materia_buscada, id_comision_buscada, current_timestamp, 'Periodo de inscripción cerrado.');
+
+		p_error_message := 'periodo de inscripción cerrado';
+
+		p_result := false;
+
+		return;
+
+	end if;
+
+
+	
+	select * into resultado_alumne from alumne where id_alumne = id_alumne_buscado;
+	
+	if not found then
+
+		insert into error values(nextval('error_id_seq'), 'alta inscrip', resultado_periodo.semestre, id_alumne_buscado, id_materia_buscada, id_comision_buscada, current_timestamp, 'Id de alumne no válido.');
+		p_error_message := 'id de alumne no válido';
+
+		p_result := false;
+
+		return;
+
+	end if;
+
+
+	
+	select * into resultado_materia from materia where id_materia = id_materia_buscada;
+	
+	if not found then
+
+		insert into error values(nextval('error_id_seq'), 'alta inscrip', resultado_periodo.semestre, id_alumne_buscado, id_materia_buscada, id_comision_buscada, current_timestamp, 'Id de materia no válido.');
+		p_error_message := 'id de materia no válido';
+
+		p_result := false;
+
+		return;
+
+	end if;
+	
+	select * into resultado_comision from comision where id_materia = id_materia_buscada and id_comision = id_comision_buscada;
+	
+	if not found then
+
+		insert into error values(nextval('error_id_seq'), 'alta inscrip', resultado_periodo.semestre, id_alumne_buscado, id_materia_buscada, id_comision_buscada, current_timestamp, 'Id de comision no válido.');
+
+		p_error_message := 'id de comision no válido';
+
+		p_result := false;
+
+		return;
+
+	end if;
+
+
+	
+	select * into resultado_cursada from cursada where id_alumne = id_alumne_buscado and id_materia = id_materia_buscada and id_comision = id_comision_buscada and estado = 'ingresade';
+	
+	if found then
+		insert into error values(nextval('error_id_seq'), 'alta inscrip', resultado_periodo.semestre, id_alumne_buscado, id_materia_buscada, id_comision_buscada, current_timestamp, 'Alumne ya inscripte en la materia');
+
+		p_error_message := 'alumne ya inscripte en la materia';
+
+		p_result := false;
+
+		return;
+
+	end if;
+
+
+	
+	correlativas_aprobadas := true;
+
+	for correlativa in select * from correlatividad where id_materia = id_materia_buscada loop
+
+		materia_encontrada := false;
+
+		for materia_aprobada in select * from historia_academica where id_alumne = id_alumne_buscado and (estado = 'regular' or estado = 'aprobada') loop
+
+			if materia_aprobada.id_materia = correlativa.id_materia_correlativa then
+
+				materia_encontrada = true;
+
+			end if;
+
+		end loop;
+		
+
+
+		if not materia_encontrada then
+
+			correlativas_aprobadas = false;
+
+		end if;
+
+	end loop;
+
+
+	
+	if not correlativas_aprobadas then
+
+		insert into error values(nextval('error_id_seq'), 'alta inscrip', resultado_periodo.semestre, id_alumne_buscado, id_materia_buscada, id_comision_buscada, current_timestamp, 'Alumne no cumple requisitos de correlatividad');
+
+		p_error_message := 'alumne no cumple requisitos de correlatividad';
+
+		p_result := false;
+
+		return;
+
+	end if;
+	
+
+
+	insert into cursada values(id_materia_buscada, id_alumne_buscado, id_comision_buscada, current_timestamp, null, 'ingresade');
+	
+	p_result := true;
+
+end;
+
+$$ language plpgsql;
+
+
+
+
+
+
+
+
+	*apertura_inscripcion(p_semestre varchar(6))* esta función recibe como parámetro un semestre y se revisa que la primera parte del varchar sea el año actual y que la segunda sea un semestre válido  (1 o 2). Si las condiciones se cumplen, se 
+	actualiza la tabla periodo con los valores dados. De lo contrario se registra el error en la tabla error:
+
+
+
+   declare
+
+	v_estado_actual varchar(6);
+
+	v_anio_actual int;
+
+	v_count int;
+
+	v_nro_semestre char(1);
+
+	v_semestre char(6);
+
+begin
+
+	p_error_message := '';
+
+
+	v_anio_actual := anio_ingresado;
+
+	v_nro_semestre := to_char(nro_semestre_ingresado, 'FM999999');
+
+	v_semestre := to_char(anio_ingresado, 'FM999999') || '-' || v_nro_semestre;
+
+
+
+	if v_nro_semestre not in ('1', '2') then
+
+		insert into error values(nextval('error_id_seq'), 'apertura', v_semestre, null, null, null, current_timestamp, 'Número de semestre no válido');
+
+		p_result := false;
+
+		p_error_message := 'número de semestre no válido';
+
+		return;
+
+	end if;
+
+
+
+	if v_anio_actual < extract(year from current_date) then
+
+		insert into error values(nextval('error_id_seq'), 'apertura', v_semestre, null, null, null, current_timestamp, 'No se permiten inscripciones para un período anterior');
+
+		p_result := false;
+
+		p_error_message := 'no se permiten inscripciones para un período anterior';
+
+		return;
+
+	end if;
+
+
+
+	select estado into v_estado_actual from periodo where semestre = v_semestre;
+
+	if v_estado_actual is not null and v_estado_actual != 'cerrado' then
+
+		insert into error values(nextval('error_id_seq'), 'apertura', v_semestre, null, null, null, current_timestamp, 'No es posible reabrir la inscripción del período');
+
+		p_result := false;
+
+		p_error_message := format('no es posible reabrir la inscripción del período, estado actual: %s', v_estado_actual);
+
+		return;
+
+	end if;
+
+
+
+	select count(*) into v_count from periodo where estado in ('inscripcion', 'cierre inscrip') and semestre != v_semestre;
+
+	if v_count > 0 then
+
+		insert into error values(nextval('error_id_seq'), 'apertura', v_semestre, null, null, null, current_timestamp, 'No es posible abrir otro período de inscripción, ya existe otro período en estado inscripción o cierre inscripción');
+
+		p_result := false;
+
+		p_error_message := 'no es posible abrir otro período de inscripción, ya existe otro período en estado inscripción o cierre inscripción';
+
+		return;
+
+	end if;
+
+
+
+	insert into periodo (semestre, estado) values (v_semestre, 'inscripcion')
+
+	on conflict (semestre) do update set estado = excluded.estado;
+
+	p_result := true;
+
+end;
+
+$$ language plpgsql;
+
+
+
+
+
+
+
+
+*bajaDeInscripcion(id_alumne_buscade integer, id_materia_buscada integer)* esta función revisa que el periodo actual este en estado de inscripcion o cursada y luego revisa que la materia y el alumne existan en sus respectivas tablas
+para actualizar el estado con las pk id_alumne e id_materia para actualizarlo a dade de baje. Al mismo tiempo, si el estado de periodo es "cursada" se buscan en la tabla cursada los alumnos que esten "en espera" para luego ordenarlos
+por fechade inscripcion, tomar el primero y cambiarle su estado a "aceptade" si es que ese alumno exista (de lo contrario no se hace nada). También guardamos los errores en la tabla correspondiente:
+	
+	
+	
+	declare
+
+	resultado_periodo periodo%rowtype;
+
+	resultado_alumne alumne%rowtype;
+
+	resultado_materia materia%rowtype;
+
+	resultado_comision comision%rowtype;
+
+	resultado_cursada cursada%rowtype;
+
+	alumne_enespera record;
+
+
+
+begin
+
+	select * into resultado_periodo from periodo where estado = 'inscripcion' or estado = 'cursada';
+
+	if not found then
+		insert into error values(nextval('error_id_seq'), 'baja inscrip', null, id_alumne_buscado, id_materia_buscada, null, current_timestamp, 'No se permiten bajas en este periodo');
+
+		p_error_message := 'no se permiten bajas en este periodo';
+
+		p_result := false;
+
+		return;
+
+	end if;
+
+
+
+	select * into resultado_alumne from alumne where id_alumne = id_alumne_buscado;
+
+	if not found then
+
+		insert into error values(nextval('error_id_seq'), 'baja inscrip', resultado_periodo.semestre, id_alumne_buscado, id_materia_buscada, null, current_timestamp, 'Id de alumne no válido');
+
+		p_error_message := 'id de alumne no válido';
+
+		p_result := false;
+
+		return;
+
+	end if;
+
+
+
+	select * into resultado_materia from materia where id_materia = id_materia_buscada;
+
+	if not found then
+		insert into error values(nextval('error_id_seq'), 'baja inscrip', resultado_periodo.semestre, id_alumne_buscado, id_materia_buscada, null, current_timestamp, 'Id de materia no válido');
+
+		p_error_message := 'id de materia no válido';
+
+		p_result := false;
+
+		return;
+
+	end if;
+
+	select * into resultado_cursada from cursada where id_alumne = id_alumne_buscado and id_materia = id_materia_buscada and estado = 'aceptade';
+
+	if not found then
+
+		insert into error values(nextval('error_id_seq'), 'baja inscrip', resultado_periodo.semestre, id_alumne_buscado, id_materia_buscada, null, current_timestamp, 'Alumne no inscripte en la materia');
+
+		p_error_message := 'alumne no inscripte en la materia';
+
+		p_result := false;
+
+		return;
+
+	end if;
+
+
+
+	update cursada set estado = 'dade de baja' where cursada.id_alumne = id_alumne_buscado and cursada.id_materia = id_materia_buscada;
+	
+	if resultado_periodo.estado = 'cursada' then
+
+		select * into alumne_enespera from cursada 
+
+		where id_materia = id_materia_buscada and id_comision = resultado_cursada.id_comision and estado = 'en espera'
+
+		order by f_inscripcion asc limit 1;
+		
+		update cursada set estado = 'aceptade' 
+
+		where id_alumne = alumne_enespera.id_alumne and id_materia = id_materia_buscada and id_comision = resultado_cursada.id_comision;
+	end if;
+
+end;
+
+$$ language plpgsql;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+* cierreDeInscripcion(semestre_buscado text)* esta función que el semestre dado este en periodo con estado de inscripcion y se actualiza su estado a cierre de inscripción:
+
+
+
+declare
+	
+	resultado_periodo periodo%rowtype;
+	
+	semestre_buscado varchar(6);
+
+
+begin
+	semestre_buscado := to_char(anio_ingresado, 'FM999999') || '-' || to_char(nro_semestre_ingresado, 'FM999999');
+
+	select * into resultado_periodo from periodo where semestre = semestre_buscado and estado = 'inscripcion' ;
+
+	if not found then
+		
+		insert into error values(nextval('error_id_seq'), 'aplicacion cupo', semestre_buscado, null, null, null, current_timestamp, 'El semestre no existe en periodo de inscripcion');
+		
+		p_result := false;
+		
+		p_error_message := 'El semestre no se encuentra en un período válido para aplicar cupos';
+		
+		return;
+	
+	end if;
+
+	update periodo set estado = 'cierre inscrip' where semestre = semestre_buscado;
+	
+	p_result := true;
+
+end;
+
+$$ language plpgsql;
+
+
+
+
+
+
+
+
+
+
+
+
+	*aplicacion_cupos(semestre_buscado varchar(6))* se verifica que el semestre al que se le quiera aplicar cupos este en estado de
+	cierre de inscripción. Se realiza un bucle por cada comisión de materia que tenga alumnes inscriptes, se actualizarán con el estado
+	aceptade en la tabla cursada, con orden de fecha de inscripció, hasta cubrrir la cantidad máxima de alumnes por cupo de comisión. Al
+	resto de les alumnes de esa comisión, que excedan el cupo, se les actualizará con el estado en espera: 
+
+
+
+declare
+	
+	periodo_encontrado periodo%rowtype;
+	
+	cupo_materia int;
+	
+	id_materia_buscada int := 1;
+	
+	id_comision_buscada int;
+	
+	alumne_inscripte cursada%rowtype;
+	
+	comision_materia comision%rowtype;
+	
+	materia comision%rowtype;
+	
+	semestre_buscado varchar(6);
+
+
+
+begin
+	semestre_buscado := to_char(anio_ingresado, 'FM999999') || '-' || to_char(nro_semestre_ingresado, 'FM999999');
+
+	select * into periodo_encontrado from periodo where semestre = semestre_buscado and estado = 'cierre inscrip';
+	
+	if not found then
+		
+		insert into error values(nextval('error_id_seq'), 'aplicacion cupo', semestre_buscado, null, null, null, current_timestamp, 'El semestre no se encuentra en un período válido para aplicar cupos');
+		
+		p_result := false;
+		
+		p_error_message := 'El semestre no se encuentra en un período válido para aplicar cupos';
+		
+		return;
+	
+	end if;
+	
+	loop
+		
+		perform 1 from comision where id_materia = id_materia_buscada;
+		
+		exit when not found;
+	
+		for comision_materia in select * from comision where id_materia = id_materia_buscada loop
+			
+			id_comision_buscada := comision_materia.id_comision;
+			
+			select cupo into cupo_materia from comision where id_materia = id_materia_buscada and id_comision = comision_materia.id_comision;
+			
+			for alumne_inscripte in (select * from cursada where id_materia = id_materia_buscada and id_comision = id_comision_buscada and estado = 'ingresade' order by f_inscripcion asc limit cupo_materia) loop
+				
+				update cursada set estado = 'aceptade' 
+				
+				where id_alumne = alumne_inscripte.id_alumne 
+				
+				and id_materia = alumne_inscripte.id_materia 
+				
+				and id_comision = alumne_inscripte.id_comision;
+			
+			end loop;
+		
+		update cursada set estado = 'en espera'
+		
+		where id_materia = id_materia_buscada and id_comision = comision_materia.id_comision and estado = 'ingresade';
+		
+		end loop;
+		
+		id_materia_buscada := id_materia_buscada + 1;
+	
+	end loop;
+	
+	update periodo set estado = 'cursada'
+	
+	where estado = 'cierre inscrip';
+	
+	p_result := true;
+
+end;
+
+$$ language plpgsql;
+
+
+
+
+
+
+
+
+	*ingreso_nota(id_alumne_buscado int, id_materia_buscada int, id_comision_buscada int, nota_ingresada int)* se valida que exista un
+	período en estado de cursada, que el alumno y la materia esten en la tabla y que correspondan a la comisión. Luego que el alumno
+	exista en el mismo id de materia y comisión y si la nota esta entre 0 y 10, se le actualiza el valor en nota de la cursada para dicho
+	alumno:
+  
+  
+  
+   declare
+	
+	v_periodo periodo%rowtype;
+
+
+
+begin
+	
+	p_error_message := '';
+
+	select * into v_periodo from periodo where estado = 'cursada';
+
+	if not found then
+		
+		insert into error values(nextval('error_id_seq'), 'ingreso nota', v_periodo.semestre, id_alumne_buscado, id_materia_buscada, id_comision_buscada, current_timestamp, 'La carga de notas no esta completa');
+		
+		p_result := false;
+		
+		p_error_message := 'periodo de cursada cerrado';
+		
+		return;
+	
+	end if;
+	
+	if not exists (select 1 from alumne where id_alumne = id_alumne_buscado) then
+		
+		insert into error values(nextval('error_id_seq'), 'ingreso nota', v_periodo.semestre, id_alumne_buscado, id_materia_buscada, id_comision_buscada, current_timestamp, 'Id de alumne no valido');
+       
+	    p_result := false;
+       
+	    p_error_message := 'id de alumne no valido';
+		
+		return;
+	
+	end if;
+	
+
+
+	if not exists (select 1 from materia where id_materia = id_materia_buscada) then
+		
+		insert into error values(nextval('error_id_seq'), 'ingreso nota', v_periodo.semestre, id_alumne_buscado, id_materia_buscada, id_comision_buscada, current_timestamp, 'Id de materia no valido');
+       
+	    p_result := false;
+       
+	    p_error_message := 'id de materia no valido';
+		
+		return;
+	
+	end if;
+  
+
+
+
+	if not exists (
+		
+		select 1 from comision
+		
+		where id_materia = id_materia_buscada and
+		
+		id_comision = id_comision_buscada
+		
+		) then
+		
+			insert into error values(nextval('error_id_seq'), 'ingreso nota', v_periodo.semestre, id_alumne_buscado, id_materia_buscada, id_comision_buscada, current_timestamp, 'Id de comision no valido para la materia');
+		
+			p_result := false;
+			
+			p_error_message := 'id de comision no valido para la materia';
+			
+			return;
+
+	end if;
+	
+
+
+	if not exists (
+		
+		select 1 from cursada
+		
+		where id_alumne = id_alumne_buscado and
+		
+		id_materia = id_materia_buscada and
+		
+		id_comision = id_comision_buscada and
+		
+		estado = 'aceptade'
+		
+		) then
+		
+			insert into error values(nextval('error_id_seq'), 'ingreso nota', v_periodo.semestre, id_alumne_buscado, id_materia_buscada, id_comision_buscada, current_timestamp, 'Alumne no cursa en la comision');
+		
+			p_result := false;
+		
+			p_error_message := 'alumne no cursa en la comision';
+		
+			return;
+	
+	end if;
+	
+
+
+	
+	if nota_ingresada < 0 or nota_ingresada > 10 then
+	
+		insert into error values(nextval('error_id_seq'), 'ingreso nota', v_periodo.semestre, id_alumne_buscado, id_materia_buscada, id_comision_buscada, current_timestamp, 'Nota no válida');
+	
+		p_result := false;
+	
+		p_error_message := 'nota no valida: ' || nota;
+	
+		return;
+	
+	end if; 
+	
+
+
+	update cursada 
+	
+	set nota = nota_ingresada
+	
+	where id_alumne = id_alumne_buscado 
+	
+	and id_materia = id_materia_buscada 
+	
+	and id_comision = id_comision_buscada;
+
+	p_result := true;
+	
+
+end;
+
+$$ language plpgsql;
+
+
+
+----
+
+	email_alta_inscripcion_trg. Este trigger se dispara cada vez que se realiza un insert en la tabla cursada, es decir cuando la 
+	columna estado toma el valor 'ingresade'. A partir de allí, ejecuta la funcion email_alta_inscipcion() la cual genera la fila 
+	a agregar en envio_mail indicando el asunto, la fecha de creacion de la fila, el email del alumne, la fecha en la que se envio el correo, 
+	el estado y el cuerpo del email con los datos de la materia, de la comisión y de le alumne, notificando que la inscripcion se
+	ha registrado en el sistg.
+
+----
+	create or replace function email_alta_inscipcion() returns trigger as $$
+	
+	declare
+	
+		v_materia_nombre text;
+	
+		v_comision_numero text;
+	
+		v_alumne_nombre text;
+	
+		v_alumne_apellido text;
+	
+	
+	
+		v_email_alumne text;
+	
+	begin
+	
+		select nombre into v_materia_nombre from materia where id_materia = new.id_materia;
+	
+		select id_comision into v_comision_numero from comision where id_materia = new.id_materia and id_comision = new.id_comision;
+	
+		select nombre, apellido, email into v_alumne_nombre, v_alumne_apellido, v_email_alumne from alumne where id_alumne = new.id_alumne;
+
+
+
+		insert into envio_email
+	
+		values(nextval('envio_email_id_seq'), current_timestamp, v_email_alumne, 'Inscripcion registrada', 
+	
+		'Hola ' || v_alumne_nombre || ' ' || v_alumne_apellido || ', tu inscripcion a la materia ' || v_materia_nombre || ', comision ' || v_comision_numero ||' ha sido registrada.',
+	
+		current_timestamp, 'pendiente' 
+	
+		);
+
+
+
+		return old;
+	
+	end;
+	
+	$$ language plpgsql;
+		
+	
+	create trigger email_alta_inscripcion_trg
+	
+	after insert on cursada
+	
+	for each row
+	
+	when (new.estado = 'ingresade')
+	
+	execute function email_alta_inscipcion();
+
+----
+
+	*email_baja_inscripcion_trg*. Este trigger se dispara cada vez que se realiza una actualizacion en la tabla cursada y se fija si el 
+	estado de la inscripcion toma el valor 'dade de baja'. Si esto se cumple, ejecuta la funcion email_baja_inscipcion() la cual genera
+	una nueva fila en envio_mail indicando el asunto, la fecha de creacion de la fila, el email del alumne, la fecha en la que se envio 
+	el correo, el estado y el cuerpo del email con los datos de la materia, la comisión y de le alumne, además notificando que se ha 
+	dado de baja.
+
+----
+	create or replace function email_baja_inscripcion() returns trigger as $$
+	
+	declare
+	
+		v_materia_nombre text;
+	
+		v_comision_numero text;
+	
+		v_alumne_nombre text;
+	
+		v_alumne_apellido text;
+	
+		v_email_alumne text;
+	
+	
+	
+	begin
+	
+		select nombre into v_materia_nombre from materia where id_materia = old.id_materia;
+	
+		select id_comision into v_comision_numero from comision where id_materia = old.id_materia and id_comision = old.id_comision;
+	
+		select nombre, apellido, email into v_alumne_nombre, v_alumne_apellido, v_email_alumne from alumne where id_alumne = old.id_alumne;
+
+
+	
+		insert into envio_email
+	
+		values (nextval('envio_email_id_seq'), current_timestamp, v_email_alumne, 'Inscripcion dada de baja',
+	
+		'Hola ' || v_alumne_nombre || ' ' || v_alumne_apellido || ', tu inscripcion a la materia ' || v_materia_nombre || ', comision ' || v_comision_numero ||' ha sido dada de baja.',
+	
+		null, 'pendiente'
+	
+		);
+			
+	
+	
+		return old;
+	
+	end;
+	
+	$$ language plpgsql;
+			
+	
+
+	create trigger email_baja_inscripcion_trg
+	
+	after update on cursada
+	
+	for each row
+	
+	when (new.estado = 'dade de baja')
+	
+	execute function email_baja_inscripcion();
+
+----
+
+	*email_aplicacion_cupos_trg*. Este trigger se dispara cada vez que se realiza una actualizacion en la tabla cursada y se fija si el 
+	estado anterior a la update de la inscripcion era 'ingresade' y si el nuevo estado toma los valores: 'aceptade' o 'en espera'. 
+	Si la condicion se cumple, el trigger ejecuta la funcion email_aplicacion_cupos() la cual inserta una nueva fila en envio_mail 
+	indicando el asunto,la fecha de creacion de la fila, el email del alumne, la fecha en la que se envio el correo, el estado y el 
+	cuerpo del email los datos de la materia, la comisión y de le alumne, además informando el estado en el que se encuentra su inscripcion-
+
+----
+	create or replace function email_aplicacion_cupos() returns trigger as $$
+	
+	declare
+	
+		v_materia_nombre text;
+	
+		v_comision_numero text;
+	
+		v_alumne_nombre text;
+	
+		v_alumne_apellido text;
+	
+		v_email_alumne text;
+	
+		v_estado_inscripcion char(12);
+	
+
+	
+	begin
+	
+		select nombre into v_materia_nombre from materia where id_materia = new.id_materia;
+	
+		select id_comision into v_comision_numero from comision where id_materia = new.id_materia and id_comision = new.id_comision;
+	
+		select nombre, apellido, email into v_alumne_nombre, v_alumne_apellido, v_email_alumne from alumne where id_alumne = new.id_alumne;
+
+
+	
+		if new.estado = 'aceptade' then
+	
+			v_estado_inscripcion := 'aceptade';
+	
+		else
+	
+			v_estado_inscripcion := 'en espera';
+	
+		end if;
+
+
+
+		insert into envio_email
+	
+		values (nextval('envio_email_id_seq'), current_timestamp, v_email_alumne, v_estado_inscripcion,
+	
+		'Hola ' || v_alumne_nombre || ' ' || v_alumne_apellido || ', tu inscripcion a la materia ' || v_materia_nombre || ', comision ' || v_comision_numero ||' se encuentra: ' || v_estado_inscripcion || '.',
+	
+		null, 'pendiente'
+	
+		);
+			
+	
+	
+		return new;
+	
+	end;
+	
+	$$ language plpgsql;
+
+	
+	
+	create trigger email_aplicacion_cupos_trg
+	
+	after update on cursada
+	
+	for each row
+	
+	when (old.estado = 'ingresade' and (new.estado = 'aceptade' or new.estado = 'en espera'))
+	
+	execute	function email_aplicacion_cupos();
+
+----
+
+	*email_inscripcion_lista_espera_trg*. Este trigger se dispara cada vez que se realiza una actualizacion en la tabla cursada y se fija
+	si el estado anterior a la update de la inscripcion era 'en espera' y si el nuevo estado toma el valor 'aceptade'. Si la condicion se
+	cumple, el trigger ejecuta la funcion email_inscripcion_lista_espera() la cual hace un insert en envio_mail indicando el asunto, la 
+	fecha de creacion de la fila, el email del alumne, la fecha en la que se envio el correo, el estado y el cuerpo del email donde se
+	informa el cambio de estado de la inscripcion y se muestran, además, los datos de la materia, la comisión y de le alumne.
+
+----
+	create or replace function email_inscripcion_lista_espera() returns trigger as $$
+	
+	declare
+	
+		v_materia_nombre text;
+	
+		v_comision_numero text;
+	
+		v_alumne_nombre text;
+	
+		v_alumne_apellido text;
+	
+		v_email_alumne text;
+	
+	begin
+	
+		select nombre into v_materia_nombre from materia where id_materia = new.id_materia;
+	
+		select id_comision into v_comision_numero from comision where id_materia = new.id_materia and id_comision = new.id_comision;
+	
+		select nombre, apellido, email into v_alumne_nombre, v_alumne_apellido, v_email_alumne from alumne where id_alumne = new.id_alumne;
+
+
+	
+		insert into envio_email
+	
+		values (nextval('envio_email_id_seq'), current_timestamp, v_email_alumne, 'Inscripcion aceptada',
+	
+		'Hola ' || v_alumne_nombre || ' ' || v_alumne_apellido || ', tu inscripcion a la materia ' || v_materia_nombre || ', comision ' || v_comision_numero ||' ha sido finalmente aceptada',
+	
+		null, 'pendiente'
+	
+		);
+		
+	
+
+		return new;
+	
+	end;
+	
+	$$ language plpgsql;
+		
+	
+
+	create trigger email_inscripcion_lista_espera_trg
+	
+	after update on cursada
+	
+	for each row
+	
+	when (old.estado = 'en espera' and new.estado = 'aceptade')
+	
+	execute function email_inscripcion_lista_espera();
+
+----
+
+	*email_cierre_cursada_trg*. Este trigger se dispara cada vez que se realiza una actualizacion en la tabla cursada y se fija
+	si el estado tiene el valor 'aceptade'. Si se cumple la condicion, el trigger ejecuta la funcion email_cierre_cursada() la cual hace
+	un insert en envio_mail indicando el asunto, la fecha de creacion de la fila, el email del alumne, la fecha en la que se envio 
+	el correo, el estado y el cuerpo del email donde se informa el cambio de estado de la cursada junto al estado academico del alumne, 
+	su nota regular y nota final en caso de tener.
+----
+	create or replace function email_cierre_cursada() returns trigger as $$
+	
+	declare
+	
+		v_materia_nombre text;
+	
+		v_comision_numero text;
+	
+		v_alumne_nombre text;
+	
+		v_alumne_apellido text;
+	
+		v_email_alumne text;
+	
+		v_estado_academico char(15);
+	
+		v_nota_regular int;
+	
+		v_nota_final int;
+	
+		v_semestre_actual text;
+	
+	
+	begin
+	
+		select nombre into v_materia_nombre from materia where id_materia = new.id_materia;
+	
+		select id_comision into v_comision_numero from comision where id_materia = new.id_materia and id_comision = new.id_comision;
+	
+		select nombre, apellido, email into v_alumne_nombre, v_alumne_apellido, v_email_alumne from alumne where id_alumne = new.id_alumne;
+	
+		select semestre into v_semestre_actual from periodo where estado = 'cursada';
+	
+		select estado, nota_regular, nota_final into v_estado_academico, v_nota_regular, v_nota_final from historia_academica
+	
+		where id_alumne = new.id_alumne and id_materia = new.id_materia and semestre = v_semestre_actual;
+		
+		insert into envio_email
+	
+		values (nextval('envio_email_id_seq'), current_timestamp, 'Cierre de cursada',
+	
+		'Hola ' || v_alumne_nombre || ' ' || v_alumne_apellido || ', tu inscripcion a la materia ' || v_materia_nombre || ', comision ' || v_comision_numero ||
+	
+		' ha sido cerrada. Estado: ' || v_estado_academico || ', Nota regular: ' || coalesce(v_nota_regular::text, 'n/a') || ', Nota final: ' || coalesce(v_nota_final::text, 'n/a') || '.',
+	
+		null, 'pendiente'
+	
+		);
+			
+		return new;
+	
+	end;
+		
+	$$ language plpgsql;
+		
+	create trigger email_cierre_cursada_trg
+	
+	after update on cursada
+	
+	for each row
+	
+	when (new.estado = 'cerrado')
+	
+	execute function email_cierre_cursada();
+
+
+
+
+== Conclusiones
+
+En este trabajo práctico, tomamos el desafío de modelar una base de datos para la inscripción de alumnes a materias y el 
+registro de sus notas a traves de un desarrollo colaborativo. Para lograrlo, tuvimos que aprender y adaptar el lenguaje Go al uso 
+de PostgreSQL, lo cual fue un reto y una gran oportunidad de aprendizaje.
+
+A lo largo de la implementación, trabajamos en varias funciones y triggers que simulan las operaciones necesarias dentro del sistema de
+inscripciones. Ajustamos manualmente varias partes del código para garantizar su correcto funcionamiento y para que las distintas 
+acciones y actualizaciones en la base de datos se llevaran a cabo de manera adecuada.
+
+En resumen, a través de este proyecto, aprendimos a combinar el uso de bases de datos relacionales y no relacionales, mejoramos nuestras 
+habilidades en Go y PostgreSQL, y desarrollamos soluciones prácticas para la gestión de inscripciones y notas en un entorno académico. 
+Aunque fue desafiante, fue una experiencia muy enriquecedora que nos permitió crecer a nivel desarrollo y entender mejor la integración 
+de diferentes tecnologías.
