@@ -45,7 +45,7 @@ begin
 			return;
 	end if;
 	
-	if nota < 0 or nota > 10 then
+	if nota_ingresada < 0 or nota_ingresada > 10 then
 		p_result := false;
 		p_error_message := 'nota no valida: ' || nota;
 		return;

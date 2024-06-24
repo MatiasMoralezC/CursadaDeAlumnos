@@ -209,7 +209,7 @@ func createDbTables() {
 					create table historia_academica(id_alumne int, semestre text, id_materia int, id_comision int, estado char(15), nota_regular int, nota_final int);
 					create table error(id_error int, operacion char(15), semestre text, id_alumne int, id_materia int, id_comision int, f_error timestamp, motivo char(64));
 					create table envio_mail(id_email int, f_generacion timestamp, email_alumne text, asunto text, cuerpo text, f_envio timestamp, estado char(10));
-					create table entrada_trx(id_orden int, operacion char(15), año int, nro_semestre int, id_alumne int, id_comision int);`)
+					create table entrada_trx(id_orden int, operacion char(15), año int, nro_semestre int, id_alumne int, id_materia int, id_comision int, nota int);`)
 	if err!= nil {
 		log.Fatal(err)
 	}
