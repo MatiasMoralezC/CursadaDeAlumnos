@@ -6,8 +6,6 @@ declare
 	resultado_comision comision%rowtype;
 	resultado_cursada cursada%rowtype;
 
-
-	cursada record;
 	alumne_enespera record;
 
 begin
@@ -29,24 +27,24 @@ begin
 	raise 'id de materia no válido';
 	end if;
 
-	select * into resultado_cursada from cursada where id_alumne = id_alumne_buscade and id_materia = id_materia_buscada and estado = 'ingresade';
+	select * into resultado_cursada from cursada where id_alumne = id_alumne_buscade and id_materia = id_materia_buscada and estado = 'aceptade';
 
-	if found then
+	if not found then
 	raise 'alumne no inscripte en la materia';
 	end if;
 
-	update cursada set estado = 'dade de baja' where cursada.id_alumne = id_alumne_buscade;
-
-
+	update cursada set estado = 'dade de baja' where cursada.id_alumne = id_alumne_buscade and cursada.id_materia = id_materia_buscada;
+	
 	if resultado_periodo.estado = 'cursada' then
-		select * from cursada where id_materia = id_materia_buscada and id_alumne = alumne_enespera.id and estado = 'en espera'
+		select * into alumne_enespera from cursada 
+		where id_materia = id_materia_buscada and id_comision = resultado_cursada.id_comision and estado = 'en espera' 
 		order by f_inscripcion asc limit 1;
 		if not found then
-			raise 'alumne no cumple requisitos de correlatividad';
+			raise 'no hay alumne en espera';
 		end if;
-
-		update cursada set estado = 'aceptade' where id_alumne = alumne_enespera.id_alumne ;
+		
+		update cursada set estado = 'aceptade' 
+		where id_alumne = alumne_enespera.id_alumne and id_materia = id_materia_buscada and id_comision = resultado_cursada.id_comision;
 	end if;
-
 end;
 $$ language plpgsql;
