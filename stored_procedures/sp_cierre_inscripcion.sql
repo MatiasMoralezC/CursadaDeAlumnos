@@ -1,4 +1,4 @@
-create function cierreDeInscripcion(anio_ingresado int, nro_semestre_ingresado int) returns void as $$
+create function cierre_de_inscripcion(anio_ingresado int, nro_semestre_ingresado int) returns void as $$
 declare
 	resultado_periodo periodo%rowtype;
 	semestre_buscado varchar(6);

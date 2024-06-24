@@ -1,4 +1,4 @@
-create function bajaDeInscripcion(id_alumne_buscade integer, id_materia_buscada integer) returns void as $$
+create function baja_de_inscripcion(id_alumne_buscade integer, id_materia_buscada integer) returns void as $$
 declare
 	resultado_periodo periodo%rowtype;
 	resultado_alumne alumne%rowtype;
