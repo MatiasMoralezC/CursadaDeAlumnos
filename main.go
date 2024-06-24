@@ -73,7 +73,7 @@ type Error struct {
 	Motivo string
 }
 
-type Envio_mail struct {
+type Envio_email struct {
 	Id_email int
 	F_generacion string
 	Email_alumne string
@@ -218,7 +218,7 @@ func createDbTables() {
 					create table periodo(semestre char(6), estado char(15));
 					create table historia_academica(id_alumne int, semestre text, id_materia int, id_comision int, estado char(15), nota_regular int, nota_final int);
 					create table error(id_error int, operacion char(15), semestre text, id_alumne int, id_materia int, id_comision int, f_error timestamp, motivo char(64));
-					create table envio_mail(id_email int, f_generacion timestamp, email_alumne text, asunto text, cuerpo text, f_envio timestamp, estado char(10));
+					create table envio_email(id_email int, f_generacion timestamp, email_alumne text, asunto text, cuerpo text, f_envio timestamp, estado char(10));
 					create table entrada_trx(id_orden int, operacion char(15), año int, nro_semestre int, id_alumne int, id_materia int, id_comision int, nota int);`)
 	if err!= nil {
 		log.Fatal(err)
@@ -242,7 +242,7 @@ func agregarPrimaryKey (){
 					alter table periodo add constraint pk_periodo primary key (semestre);
 					alter table historia_academica add constraint pk_academica primary key (id_alumne, semestre, id_materia);
 					alter table error add constraint pk_error primary key (id_error);
-					alter table envio_mail add constraint pk_envio_mail primary key (id_email);`)
+					alter table envio_email add constraint pk_envio_mail primary key (id_email);`)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -484,12 +484,28 @@ func loadSQLFilesFromFolder(connStr string, folderPath string) error {
     return nil
 }
 
+func crearSecuenciaEmailId() error {
+	db,err := sql.Open("postgres", "user=postgres host=localhost dbname=garcia_montoro_moralez_rodriguez_db1 sslmode=disable")
+	if err != nil{
+		log.Fatal(err)
+	}
+	defer db.Close()
+
+	_, err = db.Exec("create sequence if not exists envio_email_id_seq")
+	return err
+}
+
 func cargarSpTriggers(connStr string){
 	err := loadSQLFilesFromFolder(connStr, "stored_procedures")
 	if err != nil {
 		log.Fatalf("Error al cargar los Stored Procedures: %v\n", err)
 	}
 	fmt.Printf("Stored Procedures cargados exitosamente.\n")
+	
+	err = crearSecuenciaEmailId()
+	if err != nil{
+		log.Fatal(err)
+	}
 	
 	err = loadSQLFilesFromFolder(connStr, "triggers")
 	if err != nil {
