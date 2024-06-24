@@ -1,4 +1,4 @@
-create function aplicacion_cupos(anio_ingresado int, nro_semestre_ingresado int) returns void as $$
+create function aplicacion_cupos(anio_ingresado int, nro_semestre_ingresado int, out p_result boolean, out p_error_message text) as $$
 declare
 	periodo_encontrado periodo%rowtype;
 	cupo_materia int;
@@ -14,7 +14,10 @@ begin
 	select * into periodo_encontrado from periodo where semestre = semestre_buscado and estado = 'cierre inscrip';
 	
 	if not found then
-		raise 'el semestre % no se encuentra en un período válido para aplicar cupos', semestre_buscado;
+		insert into error values(nextval('error_id_seq'), 'aplicacion cupo', semestre_buscado, null, null, null, current_timestamp, 'El semestre no se encuentra en un período válido para aplicar cupos');
+		p_result := false;
+		p_error_message := 'El semestre no se encuentra en un período válido para aplicar cupos';
+		return;
 	end if;
 	
 	loop
@@ -44,5 +47,6 @@ begin
 	update periodo set estado = 'cursada'
 	where estado = 'cierre inscrip';
 	
+	p_result := true;
 end;
 $$ language plpgsql;

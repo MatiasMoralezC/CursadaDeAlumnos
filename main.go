@@ -113,7 +113,7 @@ func mostrarOpciones() int {
 	fmt.Printf ("Para crear la DB y cargar todo, presione 8\n")
 	fmt.Printf ("Para crear la base de datos BoltDB y cargar sus datos, escriba el nùmero 9\n")
 	fmt.Printf ("Para leer y mostrar los datos guardados en la base de datos BoltDB, escriba el nùmero 10\n")
-	fmt.Printf ("Para salir, escriba el nùmero 10\n")
+	fmt.Printf ("Para salir, escriba el nùmero 11\n")
 
 	var opcion int
 	fmt.Scanf("%d",&opcion)
@@ -275,10 +275,7 @@ func agregarForeignKey (){
 					alter table cursada add constraint fk_alumne foreign key (id_alumne) references alumne (id_alumne);
 					alter table historia_academica add constraint fk_alumne foreign key (id_alumne) references alumne (id_alumne);
 					alter table historia_academica add constraint fk_periodo foreign key (semestre) references periodo (semestre);
-					alter table historia_academica add constraint fk_materia foreign key (id_materia) references materia (id_materia);
-					alter table error add constraint fk_alumne foreign key (id_alumne) references alumne (id_alumne);
-					alter table error add constraint fk_periodo foreign key (semestre) references periodo (semestre);
-					alter table error add constraint fk_materia foreign key (id_materia) references materia (id_materia);`)
+					alter table historia_academica add constraint fk_materia foreign key (id_materia) references materia (id_materia);`)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -506,6 +503,17 @@ func crearSecuenciaEmailId() error {
 	return err
 }
 
+func crearSecuenciaErrorId() error {
+	db,err := sql.Open("postgres", "user=postgres host=localhost dbname=garcia_montoro_moralez_rodriguez_db1 sslmode=disable")
+	if err != nil{
+		log.Fatal(err)
+	}
+	defer db.Close()
+
+	_, err = db.Exec("create sequence if not exists error_id_seq")
+	return err
+}
+
 func cargarSpTriggers(connStr string){
 	err := loadSQLFilesFromFolder(connStr, "stored_procedures")
 	if err != nil {
@@ -514,6 +522,11 @@ func cargarSpTriggers(connStr string){
 	fmt.Printf("Stored Procedures cargados exitosamente.\n")
 	
 	err = crearSecuenciaEmailId()
+	if err != nil{
+		log.Fatal(err)
+	}
+	
+	err = crearSecuenciaErrorId()
 	if err != nil{
 		log.Fatal(err)
 	}
@@ -577,7 +590,7 @@ func dropBuckets(db *bolt.DB) error {
 }
 
 func levantarJSONsBoltDB() {
-	boltDB, err := bolt.Open("mydb.db", 0600, nil) // LA CREA SI NO EXISTE
+	boltDB, err := bolt.Open("nosql.db", 0600, nil) // LA CREA SI NO EXISTE
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -687,7 +700,7 @@ func levantarJSONsBoltDB() {
 }
 
 func leerBoltDB() {
-	boltDB, err := bolt.Open("mydb.db", 0600, nil)
+	boltDB, err := bolt.Open("nosql.db", 0600, nil)
 	if err != nil {
 		log.Fatal(err)
 	}

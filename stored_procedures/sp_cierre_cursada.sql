@@ -4,23 +4,20 @@ declare
 	v_semestre_actual text;
 	v_nota_regular int;
 	v_nota_final int;
-begin
-
-	/*--HARDCODEO
-	insert into cursada
-	values (1, 1, 1, current_timestamp, 8, 'ingresade');*/
-	
+begin	
 	p_error_message := '';
 	
 	select semestre into v_semestre_actual from periodo where estado = 'cursada' limit 1;
 
 	if v_semestre_actual is null then
+		insert into error values(nextval('error_id_seq'), 'cierre cursada', v_semestre_actual, null, id_materia_buscada, id_comision_buscada, current_timestamp, 'Periodo de cursada cerrado');
 		p_result := false;
 		p_error_message := 'periodo de cursada cerrado';
 		return;
 	end if;
 	
 	if not exists (select 1 from materia where id_materia = id_materia_buscada) then
+		insert into error values(nextval('error_id_seq'), 'cierre cursada', v_semestre_actual, null, id_materia_buscada, id_comision_buscada, current_timestamp, 'Id de materia no valido');
         p_result := false;
         p_error_message := 'id de materia no valido';
 		return;
@@ -31,6 +28,7 @@ begin
 		where id_materia = id_materia_buscada and
 		id_comision = id_comision_buscada
 		) then
+			insert into error values(nextval('error_id_seq'), 'cierre cursada', v_semestre_actual, null, id_materia_buscada, id_comision_buscada, current_timestamp, 'Id de comision no válido para la materia');
 			p_result := false;
 			p_error_message := 'id de comision no valido para la materia';
 			return;
@@ -39,6 +37,7 @@ begin
 	select count(*) into v_count from cursada where id_comision = id_comision_buscada;
 	
 	if v_count = 0 then
+		insert into error values(nextval('error_id_seq'), 'cierre cursada', v_semestre_actual, null, id_materia_buscada, id_comision_buscada, current_timestamp, 'Comision sin alumnes inscriptes');
 		p_result := false;
 		p_error_message := 'comision sin alumnes inscriptes';
 		return;
@@ -48,6 +47,7 @@ begin
 	nota is not null;
 	
 	if v_count = 0 then
+		insert into error values(nextval('error_id_seq'), 'cierre cursada', v_semestre_actual, null, id_materia_buscada, id_comision_buscada, current_timestamp, 'La carga de notas no esta completa');
 		p_result := false;
 		p_error_message := 'la carga de notas no esta completa';
 		return;
