@@ -1,4 +1,4 @@
-create function aplicacion_cupos(semestre_buscado varchar(6)) returns void as $$
+create function aplicacion_cupos(anio_ingresado int, nro_semestre_ingresado int) returns void as $$
 declare
 	periodo_encontrado periodo%rowtype;
 	cupo_materia int;
@@ -7,7 +7,10 @@ declare
 	alumne_inscripte cursada%rowtype;
 	comision_materia comision%rowtype;
 	materia comision%rowtype;
+	semestre_buscado varchar(6);
 begin
+	semestre_buscado := to_char(anio_ingresado, 'FM999999') || '-' || to_char(nro_semestre_ingresado, 'FM999999');
+
 	select * into periodo_encontrado from periodo where semestre = semestre_buscado and estado = 'cierre inscrip';
 	
 	if not found then

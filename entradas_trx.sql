@@ -1,14 +1,5 @@
 \c garcia_montoro_moralez_rodriguez_db1
 
-/*Hardcodeado*/
-insert into entrada_trx values(1, 'apertura', 2023, 2, null, null, null, null);
-insert into entrada_trx values(2, 'alta inscrip', null, null, 10, 3, 1, null);
-insert into entrada_trx values(3, 'cierre inscrip', 2024, 1, null, null, null, null);
-insert into entrada_trx values(4, 'aplicacion cupo', 2024, 1, null, null, null, null);
-insert into entrada_trx values(5, 'ingreso nota', null, null, 10, 3, 1, 10);
-/*insert into entrada_trx values(6, 'cierre cursada', null, null, null, 3, 1, null);*/
-
-
 create function ejecutar_entradas() returns void as $$
 	declare
 		v_operacion text;
@@ -29,7 +20,7 @@ create function ejecutar_entradas() returns void as $$
 		from entrada_trx where id_orden = v_id_orden;
 		
 		if v_operacion = 'apertura' then
-			perform apertura_inscripcion('2025-1');
+			perform apertura_inscripcion(v_año, v_nro_semestre);
 		end if;
 		
 		if v_operacion = 'alta inscrip' then
@@ -37,11 +28,11 @@ create function ejecutar_entradas() returns void as $$
 		end if;
 		
 		if v_operacion = 'cierre inscrip' then
-			perform cierreDeInscripcion('2025-1');
+			perform cierreDeInscripcion(v_año, v_nro_semestre);
 		end if;
 		
 		if v_operacion = 'aplicacion cupo' then
-			perform aplicacion_cupos('2025-1');
+			perform aplicacion_cupos(v_año, v_nro_semestre);
 		end if;
 		
 		if v_operacion = 'ingreso nota' then

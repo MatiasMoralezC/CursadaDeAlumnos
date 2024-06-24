@@ -83,6 +83,17 @@ type Envio_mail struct {
 	Estado string
 }
 
+type Entrada struct {
+	Id_orden int
+	Operacion string
+	Año int
+	Nro_semestre int
+	Id_alumne int
+	Id_materia int
+	Id_comision int
+	Nota int
+}
+
 func main() {
     ejecutarPrograma()
 }
@@ -96,7 +107,8 @@ func mostrarOpciones() int {
 	fmt.Printf ("Para agregar las foreign keys, escriba el nùmero 5\n")
 	fmt.Printf ("Para borrar las Primary Keys y las Foreign Keys, escriba el nùmero 6\n")
 	fmt.Printf ("Para cargar todos los Stored Procedures y los Triggers, escriba el nùmero 7\n")
-	fmt.Printf ("Para salir, escriba el nùmero 8\n")
+	fmt.Printf ("Para crear la DB y cargar todo, presione 8\n")
+	fmt.Printf ("Para salir, escriba el nùmero 9\n")
 
 	var opcion int
 	fmt.Scanf("%d",&opcion)
@@ -126,28 +138,26 @@ func ejecutarPrograma() {
 		levantarJSons()
 
 		case 4:
-		agregarPrimaryKey ()
+		agregarPrimaryKey()
 
 		case 5:
-		agregarForeignKey ()
+		agregarForeignKey()
 
 		case 6:
-		borrarKeys ()
+		borrarKeys()
 
 		case 7:
-		err := loadSQLFilesFromFolder(connStr, "stored_procedures")
-		if err != nil {
-			log.Fatalf("Error al cargar los Stored Procedures: %v\n", err)
-		}
-		fmt.Printf("Stored Procedures cargados exitosamente.\n")
-		
-		err = loadSQLFilesFromFolder(connStr, "triggers")
-		if err != nil {
-			log.Fatalf("Error al cargar los Triggers: %v\n", err)
-		}
-		fmt.Printf("Triggers cargados exitosamente.\n")
+		cargarSpTriggers(connStr)
 		
 		case 8:
+		createDatabase()
+		createDbTables()
+		levantarJSons()
+		agregarPrimaryKey()
+		agregarForeignKey()
+		cargarSpTriggers(connStr)
+		
+		case 9:
 		fmt.Printf("¡Hasta la proxima!\n")
 		os.Exit(0)
 		default:
@@ -426,6 +436,27 @@ func levantarJSons() {
 	}
 	
 	fmt.Printf("Tabla de historias académicas cargada.\n")
+	
+	dataEntradas, err := ioutil.ReadFile("data/entradas_trx.json")
+	if err != nil{
+		log.Fatal(err)
+	}
+	
+	var entradas_trx []Entrada
+	err = json.Unmarshal(dataEntradas, &entradas_trx)
+	if err != nil {
+		log.Fatal(err)
+	}
+	
+	for _, entrada_trx := range entradas_trx {
+		_, err := db.Exec("insert into entrada_trx values ($1, $2, $3, $4, $5, $6, $7, $8)", entrada_trx.Id_orden, entrada_trx.Operacion, entrada_trx.Año,
+							entrada_trx.Nro_semestre, entrada_trx.Id_alumne, entrada_trx.Id_materia, entrada_trx.Id_comision, entrada_trx.Nota)
+		if err != nil{
+			log.Fatal(err)
+		}
+	}
+	
+	fmt.Printf("Tabla de entradas cargada.\n")
 }
 
 func loadSQLFilesFromFolder(connStr string, folderPath string) error {
@@ -451,6 +482,20 @@ func loadSQLFilesFromFolder(connStr string, folderPath string) error {
     }
 
     return nil
+}
+
+func cargarSpTriggers(connStr string){
+	err := loadSQLFilesFromFolder(connStr, "stored_procedures")
+	if err != nil {
+		log.Fatalf("Error al cargar los Stored Procedures: %v\n", err)
+	}
+	fmt.Printf("Stored Procedures cargados exitosamente.\n")
+	
+	err = loadSQLFilesFromFolder(connStr, "triggers")
+	if err != nil {
+		log.Fatalf("Error al cargar los Triggers: %v\n", err)
+	}
+	fmt.Printf("Triggers cargados exitosamente.\n")
 }
 
 func loadSQLFile(db *sql.DB, filepath string) error {
