@@ -15,7 +15,7 @@ begin
 	select nombre, apellido, email into v_alumne_nombre, v_alumne_apellido, v_email_alumne from alumne where id_alumne = new.id_alumne;
 	select semestre into v_semestre_actual from periodo where estado = 'cursada';
 	select estado, nota_regular, nota_final into v_estado_academico, v_nota_regular, v_nota_final from historia_academica
-	where id_alumne = NEW.id_alumne and id_materia = NEW.id_materia and semestre = v_semestre_actual;
+	where id_alumne = new.id_alumne and id_materia = new.id_materia and semestre = v_semestre_actual;
 	
 	insert into envio_email
 	values (nextval('envio_email_id_seq'), current_timestamp, v_email_alumne, 'Cierre de cursada',
