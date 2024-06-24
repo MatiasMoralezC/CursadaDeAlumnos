@@ -10,6 +10,9 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	bolt "go.etcd.io/bbolt"
+	"github.com/google/uuid"
+
 )
 
 type Alumne struct {
@@ -108,7 +111,9 @@ func mostrarOpciones() int {
 	fmt.Printf ("Para borrar las Primary Keys y las Foreign Keys, escriba el nùmero 6\n")
 	fmt.Printf ("Para cargar todos los Stored Procedures y los Triggers, escriba el nùmero 7\n")
 	fmt.Printf ("Para crear la DB y cargar todo, presione 8\n")
-	fmt.Printf ("Para salir, escriba el nùmero 9\n")
+	fmt.Printf ("Para crear la base de datos BoltDB y cargar sus datos, escriba el nùmero 9\n")
+	fmt.Printf ("Para leer y mostrar los datos guardados en la base de datos BoltDB, escriba el nùmero 10\n")
+	fmt.Printf ("Para salir, escriba el nùmero 10\n")
 
 	var opcion int
 	fmt.Scanf("%d",&opcion)
@@ -135,7 +140,7 @@ func ejecutarPrograma() {
 		createDbTables()
 
 		case 3:
-		levantarJSons()
+		levantarJSONsSQL()
 
 		case 4:
 		agregarPrimaryKey()
@@ -152,12 +157,18 @@ func ejecutarPrograma() {
 		case 8:
 		createDatabase()
 		createDbTables()
-		levantarJSons()
+		levantarJSONsSQL()
 		agregarPrimaryKey()
 		agregarForeignKey()
 		cargarSpTriggers(connStr)
 		
 		case 9:
+		levantarJSONsBoltDB()
+		
+		case 10:
+		leerBoltDB()
+		
+		case 11:
 		fmt.Printf("¡Hasta la proxima!\n")
 		os.Exit(0)
 		default:
@@ -309,7 +320,7 @@ func borrarKeys (){
 	fmt.Printf("Primary Keys y Foreign Keys borradas.\n")
 }
 
-func levantarJSons() {
+func levantarJSONsSQL() {
 	db,err := sql.Open("postgres", "user=postgres host=localhost dbname=garcia_montoro_moralez_rodriguez_db1 sslmode=disable")
 	if err!= nil{
 		log.Fatal(err)
@@ -526,4 +537,244 @@ func loadSQLFile(db *sql.DB, filepath string) error {
     }
 
     return nil
+}
+
+func CreateUpdate(db *bolt.DB, bucketName string, key []byte, val []byte) error {
+    tx, err := db.Begin(true)
+    if err != nil {
+        return err
+    }
+    defer tx.Rollback()
+
+    b, _ := tx.CreateBucketIfNotExists([]byte(bucketName))
+
+    err = b.Put(key, val)
+    if err != nil {
+        return err
+    }
+
+    if err := tx.Commit(); err != nil {
+        return err
+    }
+
+    return nil
+}
+
+func dropBuckets(db *bolt.DB) error {
+	return db.Update(func(tx *bolt.Tx) error {
+		bucketNames := []string{"alumne", "materia", "comision", "cursada"}
+
+		for _, name := range bucketNames {
+			if err := tx.DeleteBucket([]byte(name)); err != bolt.ErrBucketNotFound {
+				if err != nil {
+					return err
+				}
+			}
+		}
+
+		return nil
+	})
+}
+
+func levantarJSONsBoltDB() {
+	boltDB, err := bolt.Open("mydb.db", 0600, nil) // LA CREA SI NO EXISTE
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer boltDB.Close()
+	
+	err = dropBuckets(boltDB)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	dataAlumnes, err := ioutil.ReadFile("data/alumnes.json")
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	var alumnes []Alumne
+	err = json.Unmarshal(dataAlumnes, &alumnes)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	for _, alumne := range alumnes {
+		val, err := json.Marshal(alumne)
+		if err != nil {
+			log.Fatal(err)
+		}
+		if err := CreateUpdate(boltDB, "alumne", []byte(fmt.Sprintf("%d", alumne.Id_alumne)), val); err != nil {
+			log.Fatal(err)
+		}
+	}
+
+	fmt.Println("Alumnes cargados.")
+
+	dataMaterias, err := ioutil.ReadFile("data/materias.json")
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	var materias []Materia
+	err = json.Unmarshal(dataMaterias, &materias)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	for _, materia := range materias {
+		val, err := json.Marshal(materia)
+		if err != nil {
+			log.Fatal(err)
+		}
+		if err := CreateUpdate(boltDB, "materia", []byte(fmt.Sprintf("%d", materia.Id_materia)), val); err != nil {
+			log.Fatal(err)
+		}
+	}
+
+	fmt.Println("Materias cargadas.")
+
+	dataComisiones, err := ioutil.ReadFile("data/comisiones.json")
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	var comisiones []Comision
+	err = json.Unmarshal(dataComisiones, &comisiones)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	for _, comision := range comisiones {
+		val, err := json.Marshal(comision)
+		if err != nil {
+			log.Fatal(err)
+		}
+		if err := CreateUpdate(boltDB, "comision", []byte(fmt.Sprintf("%d", comision.Id_comision)), val); err != nil {
+			log.Fatal(err)
+		}
+	}
+
+	fmt.Println("Comisiones cargadas.")
+	
+	dataCursadas, err := ioutil.ReadFile("data/cursada.json")
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	var cursadas []Cursada
+	err = json.Unmarshal(dataCursadas, &cursadas)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	for _, cursada := range cursadas {
+		/*GENERA UN UUID PORQUE LA TABLA CURSADA NO TIENE UN IDENTIFICADOR
+		UNICO PARA LA KEY, ENTONCES INSERTA UN UUID PARA CADA KEY -> VALUE*/
+		id := uuid.New().String()
+
+		val, err := json.Marshal(cursada)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		if err := CreateUpdate(boltDB, "cursada", []byte(id), val); err != nil {
+			log.Fatal(err)
+		}
+	}
+
+	fmt.Println("Cursadas cargadas.")
+}
+
+func leerBoltDB() {
+	boltDB, err := bolt.Open("mydb.db", 0600, nil)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer boltDB.Close()
+
+	fmt.Println("Alumnes:")
+	err = boltDB.View(func(tx *bolt.Tx) error {
+		b := tx.Bucket([]byte("alumne"))
+		if b == nil {
+			fmt.Println("Bucket 'alumne' no encontrado.")
+			return nil
+		}
+
+		return b.ForEach(func(k, v []byte) error {
+			var alumne Alumne
+			if err := json.Unmarshal(v, &alumne); err != nil {
+				return err
+			}
+			fmt.Printf("ID: %s, Nombre: %s, Apellido: %s\n", k, alumne.Nombre, alumne.Apellido)
+			return nil
+		})
+	})
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	fmt.Println("Materias:")
+	err = boltDB.View(func(tx *bolt.Tx) error {
+		b := tx.Bucket([]byte("materia"))
+		if b == nil {
+			fmt.Println("Bucket 'materia' no encontrado.")
+			return nil
+		}
+
+		return b.ForEach(func(k, v []byte) error {
+			var materia Materia
+			if err := json.Unmarshal(v, &materia); err != nil {
+				return err
+			}
+			fmt.Printf("ID: %s, Nombre: %s\n", k, materia.Nombre)
+			return nil
+		})
+	})
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	fmt.Println("Comisiones:")
+	err = boltDB.View(func(tx *bolt.Tx) error {
+		b := tx.Bucket([]byte("comision"))
+		if b == nil {
+			fmt.Println("Bucket 'comision' no encontrado.")
+			return nil
+		}
+
+		return b.ForEach(func(k, v []byte) error {
+			var comision Comision
+			if err := json.Unmarshal(v, &comision); err != nil {
+				return err
+			}
+			fmt.Printf("ID: %s, Materia ID: %d, Cupo: %d\n", k, comision.Id_materia, comision.Cupo)
+			return nil
+		})
+	})
+	if err != nil {
+		log.Fatal(err)
+	}
+	
+	fmt.Println("Cursada:")
+	err = boltDB.View(func(tx *bolt.Tx) error {
+		b := tx.Bucket([]byte("cursada"))
+		if b == nil {
+			fmt.Println("Bucket 'cursada' no encontrado.")
+			return nil
+		}
+
+		return b.ForEach(func(k, v []byte) error {
+			var cursada Cursada
+			if err := json.Unmarshal(v, &cursada); err != nil {
+				return err
+			}
+			fmt.Printf("ID Materia: %d, ID Alumne: %d, ID Comision: %d, F Inscripcion: %s, Nota: %d, Estado: %s\n",
+				cursada.Id_materia, cursada.Id_alumne, cursada.Id_comision, cursada.F_inscripcion, cursada.Nota, cursada.Estado)
+			return nil
+		})
+	})
+	if err != nil {
+		log.Fatal(err)
+	}
 }

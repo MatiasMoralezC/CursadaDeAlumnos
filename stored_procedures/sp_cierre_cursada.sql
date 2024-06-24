@@ -6,9 +6,9 @@ declare
 	v_nota_final int;
 begin
 
-	--HARDCODEO
+	/*--HARDCODEO
 	insert into cursada
-	values (1, 1, 1, current_timestamp, 8, 'ingresade');
+	values (1, 1, 1, current_timestamp, 8, 'ingresade');*/
 	
 	p_error_message := '';
 	
