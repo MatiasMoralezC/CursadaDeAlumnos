@@ -111,9 +111,10 @@ func mostrarOpciones() int {
 	fmt.Printf ("Para borrar las Primary Keys y las Foreign Keys, escriba el nùmero 6\n")
 	fmt.Printf ("Para cargar todos los Stored Procedures y los Triggers, escriba el nùmero 7\n")
 	fmt.Printf ("Para crear la DB y cargar todo, presione 8\n")
-	fmt.Printf ("Para crear la base de datos BoltDB y cargar sus datos, escriba el nùmero 9\n")
-	fmt.Printf ("Para leer y mostrar los datos guardados en la base de datos BoltDB, escriba el nùmero 10\n")
-	fmt.Printf ("Para salir, escriba el nùmero 11\n")
+	fmt.Printf ("Para ejecutar las entradas, escriba el número 9\n")
+	fmt.Printf ("Para crear la base de datos BoltDB y cargar sus datos, escriba el nùmero 10\n")
+	fmt.Printf ("Para leer y mostrar los datos guardados en la base de datos BoltDB, escriba el nùmero 11\n")
+	fmt.Printf ("Para salir, escriba el nùmero 12\n")
 
 	var opcion int
 	fmt.Scanf("%d",&opcion)
@@ -163,12 +164,15 @@ func ejecutarPrograma() {
 		cargarSpTriggers(connStr)
 		
 		case 9:
-		levantarJSONsBoltDB()
+		ejecutarEntradas(connStr)
 		
 		case 10:
-		leerBoltDB()
+		levantarJSONsBoltDB()
 		
 		case 11:
+		leerBoltDB()
+		
+		case 12:
 		fmt.Printf("¡Hasta la proxima!\n")
 		os.Exit(0)
 		default:
@@ -183,9 +187,9 @@ func ejecutarPrograma() {
 
 func preguntarContinuar() bool {
 	var continuar string
-	fmt.Printf("¿Desea realizar otra accion? (s/n):\n")
+	fmt.Printf("¿Desea realizar otra accion? Presione enter:\n")
 	fmt.Scanf("%s",&continuar)
-	return continuar == "s"
+	return continuar == ""
 }
 
 func clear() {
@@ -536,6 +540,14 @@ func cargarSpTriggers(connStr string){
 		log.Fatalf("Error al cargar los Triggers: %v\n", err)
 	}
 	fmt.Printf("Triggers cargados exitosamente.\n")
+}
+
+func ejecutarEntradas(connStr string){
+	err := loadSQLFilesFromFolder(connStr, "entradas")
+	if err != nil {
+		log.Fatalf("Error al cargar las entradas: %v\n", err)
+	}
+	fmt.Printf("Entradas ejecutadas exitosamente.\n")
 }
 
 func loadSQLFile(db *sql.DB, filepath string) error {

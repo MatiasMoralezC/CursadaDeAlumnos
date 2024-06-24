@@ -1,5 +1,3 @@
-\c garcia_montoro_moralez_rodriguez_db1
-
 create function ejecutar_entradas() returns void as $$
 	declare
 		v_operacion text;
